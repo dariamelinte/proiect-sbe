@@ -4,7 +4,7 @@ A distributed content-based publish/subscribe system implemented in Python, feat
 
 ## Project Progress Report
 
-### Completed Tasks (20/35 points)
+### Completed Tasks (25/35 points)
 
 1. ✅ Publisher Node (5/5 points)
    - Implemented random publication generation
@@ -33,7 +33,7 @@ A distributed content-based publish/subscribe system implemented in Python, feat
    - Update broker-subscriber communication
 
 
-### Remaining Tasks (15 points)
+### Remaining Tasks (10 points)
 
 1. 🔄 System Evaluation (10 points)
    - [ ] Implement performance measurement tools
