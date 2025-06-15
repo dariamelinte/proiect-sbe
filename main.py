@@ -1,98 +1,109 @@
+import logging
 import time
-import json
-from core import Publisher, Configs, BrokerNetwork, Subscription
-from core.subscriber import Subscriber, generate_random_subscription, generate_random_window_subscription
-from core.utils import setup_logging
+import random
+from typing import Dict, Any, List
+
+from core import Configs, BrokerNetwork, Subscriber
+from core.publisher import Publisher
 
 def print_subscriber_messages(subscriber: Subscriber):
-    """Print received messages for a subscriber"""
-    print(f"\nMessages received by {subscriber.subscriber_id}:")
-    for msg in subscriber.get_received_messages():
-        print(json.dumps(msg, indent=2))
+    """Print messages received by a subscriber."""
+    print(f"\nMessages for Subscriber {subscriber.name}:")
+    for msg in subscriber.received_messages:
+        print(f"  - {msg}")
 
-def print_conditions(conditions: dict):
-    """Print conditions in a readable format"""
-    # Extract the lambda function's code object
-    lambda_code = conditions['value'].__code__
-    # Get the constants tuple and find the threshold value
-    constants = lambda_code.co_consts
-    threshold = next((c for c in constants if isinstance(c, (int, float))), None)
-    
-    if threshold is None:
-        return f"{conditions['type']} (threshold not found)"
-    
-    # Determine the operator from the lambda function's code
-    operator = '>' if '>' in str(conditions['value']) else '<'
-    return f"{conditions['type']} {operator} {threshold:.2f}"
+def print_conditions(subscriber: Subscriber):
+    """Print subscription conditions in a readable format."""
+    print(f"\nSubscriptions for Subscriber {subscriber.name}:")
+    for i, sub in enumerate(subscriber.subscriptions, 1):
+        print(f"\nSubscription {i}:")
+        for field, condition in sub.conditions.items():
+            if callable(condition):
+                print(f"  {field}: {condition.__name__}")
+            else:
+                print(f"  {field}: {condition}")
 
 def main():
-    # Setup logging
-    logger = setup_logging()
-    
+    # Set up logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     # Initialize configurations
     configs = Configs(config_path='generator_configs.json')
     
     # Create broker network
-    broker_network = BrokerNetwork(num_brokers=3, window_size=10, logger=logger)
-    broker_network.start()
-
-    # Create publisher with configurations
+    broker_network = BrokerNetwork(
+        num_brokers=configs.broker_count,
+        window_size=configs.subscription_window_size,
+        logger=logger
+    )
+    
+    # Start the publisher
     publisher = Publisher(configs)
-
-    # Create 3 subscribers
-    subscribers = [
-        Subscriber(f"subscriber_{i}", logger) for i in range(3)
-    ]
-
-    # Create random subscriptions for each subscriber
+    publisher.start()
+    
+    # Create subscribers
+    subscribers = []
+    for i in range(configs.subscriber_count):
+        subscriber = Subscriber(f"subscriber_{i}", logger)
+        
+        # Add some random subscriptions
+        for j in range(2):  # Add 2 simple subscriptions
+            field = random.choice(configs.fields)
+            if field in configs.numeric_fields:
+                range_info = configs.get_field_range(field)
+                value = random.randint(range_info['min'], range_info['max'])
+                subscriber.add_subscription({field: lambda x, v=value: x == v})
+            elif field in configs.string_fields:
+                choices = configs.get_field_choices(field)
+                value = random.choice(choices)
+                subscriber.add_subscription({field: lambda x, v=value: x == v})
+        
+        # Add one window-based subscription
+        if configs.numeric_fields:
+            field = random.choice(configs.numeric_fields)
+            range_info = configs.get_field_range(field)
+            value = random.randint(range_info['min'], range_info['max'])
+            subscriber.add_window_subscription(
+                field,
+                lambda x, v=value: x > v,
+                configs.subscription_window_size
+            )
+        
+        subscribers.append(subscriber)
+        broker_network.add_subscriber(subscriber)
+    
+    # Print initial subscriptions
     for subscriber in subscribers:
-        # Create 2 simple subscriptions
-        for _ in range(2):
-            conditions = generate_random_subscription()
-            subscription = subscriber.create_simple_subscription(conditions)
-            broker_network.add_subscription(subscription)
-            print(f"\nCreated simple subscription for {subscriber.subscriber_id}:")
-            print(f"Conditions: {print_conditions(conditions)}")
-
-        # Create 1 window-based subscription
-        conditions, window_size = generate_random_window_subscription()
-        subscription = subscriber.create_window_subscription(conditions, window_size)
-        broker_network.add_subscription(subscription)
-        print(f"\nCreated window subscription for {subscriber.subscriber_id}:")
-        print(f"Conditions: {print_conditions(conditions)}")
-        print(f"Window size: {window_size}")
-
+        print_conditions(subscriber)
+    
     try:
-        # Generate and publish messages for 30 seconds
+        # Run for 30 seconds
         start_time = time.time()
         while time.time() - start_time < 30:
+            # Get publication from publisher
             if not publisher.publication_queue.empty():
                 publication = publisher.get_publication()
-                broker_network.publish(publication)
-                
-                # Simulate message delivery to subscribers
-                for subscriber in subscribers:
-                    for subscription in subscriber.subscriptions.values():
-                        if subscription.matches(publication):
-                            subscriber.receive_message(publication)
-                        elif subscription.window_size is not None:
-                            subscription.window_buffer.append(publication)
-                            if len(subscription.window_buffer) >= subscription.window_size:
-                                meta_pub = subscription.process_window()
-                                if meta_pub:
-                                    subscriber.receive_message(meta_pub)
-                                subscription.window_buffer = []
+                if publication:
+                    # Publish to all brokers
+                    broker_network.publish(publication)
             
-            time.sleep(0.1)
-
+            # Process any matches
+            for subscriber in subscribers:
+                subscriber.process_matches()
+            
+            time.sleep(0.1)  # Small delay to prevent CPU overuse
+            
+    except KeyboardInterrupt:
+        print("\nStopping simulation...")
     finally:
-        # Print received messages for each subscriber
+        # Cleanup
+        publisher.stop()
+        broker_network.stop()
+        
+        # Print final results
         for subscriber in subscribers:
             print_subscriber_messages(subscriber)
-        
-        # Stop the broker network
-        broker_network.stop()
-        publisher.stop()
 
 if __name__ == "__main__":
     main()

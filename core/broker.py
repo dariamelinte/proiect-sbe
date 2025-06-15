@@ -1,127 +1,71 @@
 import threading
-import time
-from typing import Dict, List, Any, Set, Tuple, TYPE_CHECKING
-from queue import Queue
-from datetime import datetime
-import json
 import logging
+from typing import Dict, Any, List, Optional, TYPE_CHECKING
+from queue import Queue
 
 from .subscription import Subscription
-from .utils import log_event
+from .proto_utils import parse_broker_message, create_broker_message, serialize_publication, deserialize_publication
+from protos.message_pb2 import BrokerMessage
+
+if TYPE_CHECKING:
+    from .broker_network import BrokerNetwork
 
 class Broker:
-    def __init__(self, broker_id: str, window_size: int = 10, logger: logging.Logger = None):
-        self.broker_id = broker_id
+    def __init__(self, name: str, window_size: int, logger: Optional[logging.Logger] = None):
+        self.name = name
         self.window_size = window_size
-        self.subscriptions: Dict[str, Subscription] = {}
+        self.logger = logger or logging.getLogger(__name__)
+        self.subscriptions: List[Subscription] = []
         self.publication_queue = Queue()
-        self.is_running = False
-        self.processing_thread = None
-        self.lock = threading.Lock()
-        self.logger = logger or logging.getLogger('pubsub_system')
-
-    def add_subscription(self, subscription: Subscription) -> str:
-        """Add a new subscription and return its ID"""
-        with self.lock:
-            self.subscriptions[subscription.id] = subscription
-            # Convert conditions to a serializable format
-            log_conditions = {
-                'type': subscription.conditions['type'],
-                'threshold': str(subscription.conditions['value'].__code__.co_consts[0])
-            }
-            log_event(self.logger, 'subscription_added', {
-                'broker_id': self.broker_id,
-                'subscription_id': subscription.id,
-                'conditions': log_conditions
-            })
-            return subscription.id
-
-    def remove_subscription(self, subscription_id: str):
-        """Remove a subscription by ID"""
-        with self.lock:
-            if subscription_id in self.subscriptions:
-                del self.subscriptions[subscription_id]
-                log_event(self.logger, 'subscription_removed', {
-                    'broker_id': self.broker_id,
-                    'subscription_id': subscription_id
-                })
-
-    def process_publication(self, publication: Dict[str, Any]):
-        """Process a publication and notify matching subscribers"""
-        with self.lock:
-            log_event(self.logger, 'publication_received', {
-                'broker_id': self.broker_id,
-                'publication': publication
-            })
-            
-            # Process simple subscriptions
-            for sub_id, subscription in self.subscriptions.items():
-                if subscription.window_size is None:
-                    if subscription.matches(publication):
-                        log_event(self.logger, 'match_found', {
-                            'broker_id': self.broker_id,
-                            'subscription_id': sub_id,
-                            'publication': publication
-                        })
-                        self.notify_subscriber(sub_id, publication)
-                else:
-                    # Add to window buffer
-                    subscription.window_buffer.append(publication)
-                    log_event(self.logger, 'window_buffer_updated', {
-                        'broker_id': self.broker_id,
-                        'subscription_id': sub_id,
-                        'buffer_size': len(subscription.window_buffer),
-                        'window_size': subscription.window_size
-                    })
-                    
-                    # Process window if full
-                    if len(subscription.window_buffer) >= subscription.window_size:
-                        meta_pub = subscription.process_window()
-                        if meta_pub:
-                            log_event(self.logger, 'window_processed', {
-                                'broker_id': self.broker_id,
-                                'subscription_id': sub_id,
-                                'meta_publication': meta_pub
-                            })
-                            self.notify_subscriber(sub_id, meta_pub)
-                        # Clear buffer for next window
-                        subscription.window_buffer = []
-
-    def notify_subscriber(self, subscription_id: str, publication: Dict[str, Any]):
-        """Notify a subscriber about a matching publication"""
-        log_event(self.logger, 'subscriber_notified', {
-            'broker_id': self.broker_id,
-            'subscription_id': subscription_id,
-            'publication': publication
-        })
-        print(f"Broker {self.broker_id} notifying subscription {subscription_id}:")
-        print(json.dumps(publication, indent=2))
-
+        self.running = False
+        self.thread = None
+        self.network: Optional['BrokerNetwork'] = None
+        
     def start(self):
-        """Start the broker's processing thread"""
-        self.is_running = True
-        self.processing_thread = threading.Thread(target=self._process_loop)
-        self.processing_thread.start()
-        log_event(self.logger, 'broker_started', {
-            'broker_id': self.broker_id
-        })
-        print(f"Broker {self.broker_id} started")
-
+        """Start the broker's processing thread."""
+        if not self.running:
+            self.running = True
+            self.thread = threading.Thread(target=self._process_publications)
+            self.thread.daemon = True
+            self.thread.start()
+            self.logger.info(f"Broker {self.name} started")
+        
     def stop(self):
-        """Stop the broker's processing thread"""
-        self.is_running = False
-        if self.processing_thread:
-            self.processing_thread.join()
-        log_event(self.logger, 'broker_stopped', {
-            'broker_id': self.broker_id
-        })
-        print(f"Broker {self.broker_id} stopped")
-
-    def _process_loop(self):
-        """Main processing loop for publications"""
-        while self.is_running:
+        """Stop the broker's processing thread."""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+            self.logger.info(f"Broker {self.name} stopped")
+        
+    def add_subscription(self, subscription: Subscription):
+        """Add a subscription to this broker."""
+        self.subscriptions.append(subscription)
+        self.logger.info(f"Added subscription to broker {self.name}")
+        
+    def publish(self, publication: Dict[str, Any]):
+        """Add a publication to the broker's queue."""
+        self.publication_queue.put(publication)
+        
+    def _process_publications(self):
+        """Process publications from the queue."""
+        while self.running:
             try:
                 publication = self.publication_queue.get(timeout=1)
-                self.process_publication(publication)
-            except:
-                continue 
+                self._match_publication(publication)
+            except Queue.Empty:
+                continue
+            except Exception as e:
+                self.logger.error(f"Error processing publication: {e}")
+        
+    def _match_publication(self, publication: Dict[str, Any]):
+        """Match a publication against all subscriptions."""
+        for subscription in self.subscriptions:
+            if subscription.matches(publication):
+                self.logger.info(f"Publication matched subscription in broker {self.name}")
+                # Notify the network about the match
+                if self.network:
+                    self.network.notify_match(subscription, publication)
+        
+    def get_subscriptions(self) -> List[Subscription]:
+        """Get all subscriptions managed by this broker."""
+        return self.subscriptions 

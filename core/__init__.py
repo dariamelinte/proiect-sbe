@@ -1,7 +1,13 @@
-from .publisher import Publisher
+from .broker import Broker
 from .broker_network import BrokerNetwork
+from .generator_configs import Configs
 from .subscription import Subscription
 from .subscriber import Subscriber
-from .generator_configs import Configs
 
-__all__ = ['Publisher', 'BrokerNetwork', 'Subscription', 'Subscriber', 'Configs']
+__all__ = [
+    'Broker',
+    'BrokerNetwork',
+    'Configs',
+    'Subscription',
+    'Subscriber'
+]

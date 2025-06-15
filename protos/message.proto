@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package pubsub;
+
+// Publication message definition
+message Publication {
+  int32 station_id = 1;
+  string city = 2;
+  string direction = 3;
+  double temperature = 4;
+  double rain = 5;
+  double wind = 6;
+  string created_at = 7;
+}
+
+// Subscription condition definition
+message Condition {
+  string field = 1;
+  string operator = 2;  // =, >, <, >=, <=
+  oneof value {
+    double numeric_value = 3;
+    string string_value = 4;
+  }
+}
+
+// Subscription message definition
+message Subscription {
+  repeated Condition conditions = 1;
+  int32 window_size = 2;  // 0 for simple subscriptions
+}
+
+// Broker message that can contain either a publication or subscription
+message BrokerMessage {
+  enum MessageType {
+    PUBLICATION = 0;
+    SUBSCRIPTION = 1;
+  }
+  
+  MessageType type = 1;
+  oneof content {
+    Publication publication = 2;
+    Subscription subscription = 3;
+  }
+} 

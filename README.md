@@ -26,15 +26,16 @@ A distributed content-based publish/subscribe system implemented in Python, feat
    - Message history tracking
    - Comprehensive logging
 
+4. ✅ Binary Serialization (5 points)
+   - Implement Google Protocol Buffers or Thrift
+   - Define message schemas
+   - Modify publisher-broker communication
+   - Update broker-subscriber communication
+
+
 ### Remaining Tasks (15 points)
 
-1. 🔄 Binary Serialization (5 points)
-   - [ ] Implement Google Protocol Buffers or Thrift
-   - [ ] Define message schemas
-   - [ ] Modify publisher-broker communication
-   - [ ] Update broker-subscriber communication
-
-2. 🔄 System Evaluation (10 points)
+1. 🔄 System Evaluation (10 points)
    - [ ] Implement performance measurement tools
    - [ ] Run 10,000 simple subscription test
    - [ ] Measure delivery statistics:

@@ -8,59 +8,40 @@ from .subscription import Subscription
 from .utils import log_event
 
 class Subscriber:
-    def __init__(self, subscriber_id: str, logger: logging.Logger = None):
-        self.subscriber_id = subscriber_id
-        self.subscriptions: Dict[str, Subscription] = {}
-        self.logger = logger or logging.getLogger('pubsub_system')
+    def __init__(self, name: str, logger: logging.Logger = None):
+        self.name = name
+        self.logger = logger or logging.getLogger(__name__)
+        self.subscriptions: List[Subscription] = []
         self.received_messages: List[Dict[str, Any]] = []
 
-    def create_simple_subscription(self, conditions: Dict[str, Any]) -> Subscription:
-        """Create a simple subscription with given conditions"""
+    def add_subscription(self, conditions: Dict[str, Callable]):
+        """Add a simple subscription with given conditions."""
         subscription = Subscription(conditions=conditions)
-        self.subscriptions[subscription.id] = subscription
-        # Convert conditions to a serializable format
-        log_conditions = {
-            'type': conditions['type'],
-            'threshold': str(conditions['value'].__code__.co_consts[0])  # Extract threshold from lambda
-        }
-        log_event(self.logger, 'simple_subscription_created', {
-            'subscriber_id': self.subscriber_id,
-            'subscription_id': subscription.id,
-            'conditions': log_conditions
-        })
-        return subscription
+        self.subscriptions.append(subscription)
+        self.logger.info(f"Added simple subscription to {self.name}")
 
-    def create_window_subscription(self, conditions: Dict[str, Any], window_size: int) -> Subscription:
-        """Create a window-based subscription with given conditions and window size"""
+    def add_window_subscription(self, field: str, condition: Callable, window_size: int):
+        """Add a window-based subscription."""
+        conditions = {field: condition}
         subscription = Subscription(conditions=conditions, window_size=window_size)
-        self.subscriptions[subscription.id] = subscription
-        # Convert conditions to a serializable format
-        log_conditions = {
-            'type': conditions['type'],
-            'threshold': str(conditions['value'].__code__.co_consts[0])  # Extract threshold from lambda
-        }
-        log_event(self.logger, 'window_subscription_created', {
-            'subscriber_id': self.subscriber_id,
-            'subscription_id': subscription.id,
-            'conditions': log_conditions,
-            'window_size': window_size
-        })
-        return subscription
+        self.subscriptions.append(subscription)
+        self.logger.info(f"Added window subscription to {self.name}")
+
+    def process_matches(self):
+        """Process any matches in window-based subscriptions."""
+        for subscription in self.subscriptions:
+            if subscription.window_size is not None:
+                meta_pub = subscription.process_window()
+                if meta_pub:
+                    self.receive_message(meta_pub)
 
     def receive_message(self, message: Dict[str, Any]):
-        """Receive and store a message"""
+        """Receive and store a message."""
         self.received_messages.append(message)
-        log_event(self.logger, 'message_received', {
-            'subscriber_id': self.subscriber_id,
-            'message': message
-        })
-
-    def get_received_messages(self) -> List[Dict[str, Any]]:
-        """Get all received messages"""
-        return self.received_messages
+        self.logger.info(f"Subscriber {self.name} received message: {message}")
 
     def clear_messages(self):
-        """Clear received messages"""
+        """Clear received messages."""
         self.received_messages = []
 
 def generate_random_subscription() -> Dict[str, Any]:
