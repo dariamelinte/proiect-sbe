@@ -1,5 +1,9 @@
 import random
 import os
+import json
+import logging
+from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Any
 
 valid_types = {'int', 'string', 'float', 'date'}
@@ -69,3 +73,38 @@ def generate_operator_freq(fields, min_eq=0.7):
 def create_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
+
+# Configure logging
+def setup_logging(log_dir: str = "logs") -> logging.Logger:
+    """Setup logging configuration"""
+    # Create logs directory if it doesn't exist
+    Path(log_dir).mkdir(exist_ok=True)
+    
+    # Create a logger
+    logger = logging.getLogger('pubsub_system')
+    logger.setLevel(logging.INFO)
+    
+    # Create handlers
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    file_handler = logging.FileHandler(f'{log_dir}/pubsub_{timestamp}.log')
+    console_handler = logging.StreamHandler()
+    
+    # Create formatters and add it to handlers
+    log_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(log_format)
+    console_handler.setFormatter(log_format)
+    
+    # Add handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+def log_event(logger: logging.Logger, event_type: str, data: Dict[str, Any]):
+    """Log an event with timestamp and structured data"""
+    event = {
+        'timestamp': datetime.now().isoformat(),
+        'type': event_type,
+        'data': data
+    }
+    logger.info(json.dumps(event))
