@@ -24,10 +24,15 @@ class Broker:
         """Add a new subscription and return its ID"""
         with self.lock:
             self.subscriptions[subscription.id] = subscription
+            # Convert conditions to a serializable format
+            log_conditions = {
+                'type': subscription.conditions['type'],
+                'threshold': str(subscription.conditions['value'].__code__.co_consts[0])
+            }
             log_event(self.logger, 'subscription_added', {
                 'broker_id': self.broker_id,
                 'subscription_id': subscription.id,
-                'conditions': subscription.conditions
+                'conditions': log_conditions
             })
             return subscription.id
 

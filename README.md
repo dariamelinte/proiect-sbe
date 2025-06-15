@@ -2,6 +2,66 @@
 
 A distributed content-based publish/subscribe system implemented in Python, featuring multiple brokers, window-based subscriptions, and comprehensive logging.
 
+## Project Progress Report
+
+### Completed Tasks (20/35 points)
+
+1. ✅ Publisher Node (5/5 points)
+   - Implemented random publication generation
+   - Supports multiple message types (temperature, humidity, pressure)
+   - Configurable generation intervals
+   - Timestamp addition to publications
+
+2. ✅ Broker Network (10/10 points)
+   - Implemented 3-broker overlay network
+   - Content-based filtering
+   - Window-based publication processing
+   - Round-robin subscription distribution
+   - Thread-safe operations
+
+3. ✅ Subscriber Nodes (5/5 points)
+   - Implemented 3 subscriber nodes
+   - Support for both simple and window-based subscriptions
+   - Random subscription generation
+   - Message history tracking
+   - Comprehensive logging
+
+### Remaining Tasks (15 points)
+
+1. 🔄 Binary Serialization (5 points)
+   - [ ] Implement Google Protocol Buffers or Thrift
+   - [ ] Define message schemas
+   - [ ] Modify publisher-broker communication
+   - [ ] Update broker-subscriber communication
+
+2. 🔄 System Evaluation (10 points)
+   - [ ] Implement performance measurement tools
+   - [ ] Run 10,000 simple subscription test
+   - [ ] Measure delivery statistics:
+     - [ ] Successful deliveries in 3-minute window
+     - [ ] Average delivery latency
+     - [ ] Matching rate comparison (100% vs 25% equality)
+   - [ ] Generate evaluation report
+
+### Bonus Tasks (15-20 points)
+
+1. 🔄 Advanced Routing (5 points)
+   - [ ] Implement distributed subscription routing
+   - [ ] Multi-broker message routing
+   - [ ] Partial matching across brokers
+
+2. 🔄 Fault Tolerance (5 points)
+   - [ ] Implement broker failure detection
+   - [ ] Add message persistence
+   - [ ] Handle subscription recovery
+   - [ ] Ensure no notification loss
+
+3. 🔄 Message Privacy (5-10 points)
+   - [ ] Implement message encryption
+   - [ ] Add encrypted matching
+   - [ ] Secure broker communication
+   - [ ] Privacy-preserving subscriptions
+
 ## System Architecture
 
 ### Core Components
@@ -27,16 +87,23 @@ A distributed content-based publish/subscribe system implemented in Python, feat
    - Supports both simple and window-based subscriptions
    - Configurable window sizes for aggregation
 
+5. **Subscriber**
+   - Manages multiple subscriptions (simple and window-based)
+   - Receives and stores matching messages
+   - Supports random subscription generation
+   - Tracks message history
+
 ### System Flow
 
 ```
-Publisher -> BrokerNetwork -> Brokers -> Subscriptions
+Publisher -> BrokerNetwork -> Brokers -> Subscriptions -> Subscribers
 ```
 
 1. Publisher generates messages at configurable intervals
 2. Messages are distributed to all brokers in the network
 3. Each broker processes messages against its subscriptions
 4. When matches occur, subscribers are notified
+5. Subscribers store received messages for analysis
 
 ## Features
 
@@ -68,6 +135,30 @@ Publisher -> BrokerNetwork -> Brokers -> Subscriptions
    )
    ```
 
+### Subscriber Simulation
+
+The system includes a simulation of 3 subscriber nodes, each with:
+- 2 simple subscriptions with random conditions
+- 1 window-based subscription with random window size
+- Message history tracking
+- Comprehensive logging
+
+Example subscriber setup:
+```python
+# Create subscribers
+subscribers = [Subscriber(f"subscriber_{i}") for i in range(3)]
+
+# Create random subscriptions
+for subscriber in subscribers:
+    # Simple subscriptions
+    conditions = generate_random_subscription()
+    subscription = subscriber.create_simple_subscription(conditions)
+    
+    # Window-based subscription
+    conditions, window_size = generate_random_window_subscription()
+    subscription = subscriber.create_window_subscription(conditions, window_size)
+```
+
 ### Logging System
 
 - Comprehensive JSON-formatted logging
@@ -78,6 +169,7 @@ Publisher -> BrokerNetwork -> Brokers -> Subscriptions
   - Subscription management
   - Window operations
   - Match notifications
+  - Subscriber activities
 
 Example log entry:
 ```json
@@ -99,6 +191,7 @@ Example log entry:
 
 ### Default Settings
 - Number of brokers: 3
+- Number of subscribers: 3
 - Window size: 10
 - Message generation interval: 0.4 seconds
 - Logging: Enabled
@@ -118,6 +211,7 @@ proiect-sbe/
 │   ├── broker_network.py
 │   ├── publisher.py
 │   ├── subscription.py
+│   ├── subscriber.py
 │   └── utils.py
 ├── logs/
 │   └── pubsub_*.log
@@ -132,6 +226,13 @@ proiect-sbe/
    ```bash
    python main.py
    ```
+
+The simulation will:
+1. Create 3 subscribers
+2. Generate random subscriptions for each subscriber
+3. Run for 30 seconds, publishing messages
+4. Display received messages for each subscriber
+5. Generate comprehensive logs
 
 ## Design Principles
 
@@ -149,3 +250,5 @@ The system is designed to be:
 4. Implement load balancing strategies
 5. Add monitoring and metrics collection
 6. Support for dynamic broker addition/removal
+7. Add more complex subscription patterns
+8. Implement subscriber authentication and authorization
