@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package pubsub;
+
+message Publication {
+  int32 station_id = 1;
+  string city = 2;
+  string direction = 3;
+  float temperature = 4;
+  float rain = 5;
+  float wind = 6;
+  string created_at = 7;   // format: YYYY-MM-DD
+  string timestamp = 8;    // ISO 8601
+}

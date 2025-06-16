@@ -6,66 +6,128 @@ from datetime import datetime
 
 from .subscription import Subscription
 from .utils import log_event
+from .generator_pub_sub import GeneratorPubSub
+
+import threading
+import time
 
 class Subscriber:
-    def __init__(self, name: str, logger: logging.Logger = None):
-        self.name = name
-        self.logger = logger or logging.getLogger(__name__)
-        self.subscriptions: List[Subscription] = []
+    def __init__(self, subscriber_id: str, logger: logging.Logger = None, configs: Any = None):
+        self.subscriber_id = subscriber_id
+        self.subscriptions: Dict[str, Subscription] = {}
+        self.logger = logger or logging.getLogger('pubsub_system')
+        self.configs = configs
+        self.generator = GeneratorPubSub(configs) if configs else None
         self.received_messages: List[Dict[str, Any]] = []
 
-    def add_subscription(self, conditions: Dict[str, Callable]):
-        """Add a simple subscription with given conditions."""
-        subscription = Subscription(conditions=conditions)
-        self.subscriptions.append(subscription)
-        self.logger.info(f"Added simple subscription to {self.name}")
+        self.is_running = False
+        self.sub_thread = None
 
-    def add_window_subscription(self, field: str, condition: Callable, window_size: int):
-        """Add a window-based subscription."""
-        conditions = {field: condition}
-        subscription = Subscription(conditions=conditions, window_size=window_size)
-        self.subscriptions.append(subscription)
-        self.logger.info(f"Added window subscription to {self.name}")
+    def start(self):
+        self.is_running = True
+        self.sub_thread = threading.Thread(target=self.run)
+        self.sub_thread.start()
+        print(f"{self.subscriber_id} started subscription loop")
 
-    def process_matches(self):
-        """Process any matches in window-based subscriptions."""
-        for subscription in self.subscriptions:
-            if subscription.window_size is not None:
-                meta_pub = subscription.process_window()
-                if meta_pub:
-                    self.receive_message(meta_pub)
+    def stop(self):
+        self.is_running = False
+        if self.sub_thread:
+            self.sub_thread.join()
+        print(f"{self.subscriber_id} stopped")
+
+    def run(self):
+        """Periodically add new subscriptions every 30 seconds"""
+        while self.is_running:
+            try:
+                # Add a simple subscription
+                simple_cond = generate_random_subscription(self.generator)
+                self.create_simple_subscription(simple_cond)
+                print(f"{self.subscriber_id} added new simple subscription")
+
+                # Optionally add a window subscription too
+                if random.random() < 0.5:
+                    window_cond = generate_random_window_subscription(self.generator)
+                    self.create_window_subscription(window_cond)
+                    print(f"{self.subscriber_id} added new window subscription")
+
+                time.sleep(30)
+            except Exception as e:
+                self.logger.error(f"{self.subscriber_id} error in subscription loop: {e}")
+
+    def create_simple_subscription(self, conditions) -> Subscription:
+        """Create a simple subscription with specified conditions"""
+        subscription = Subscription(conditions=conditions, subscriber=self)
+        self.subscriptions[subscription.id] = subscription
+        log_conditions = [
+            {
+                'field': condition[0],
+                'operator': condition[1],
+                'value': str(condition[2])
+            }
+            for condition in conditions
+        ]
+        log_event(self.logger, 'simple_subscription_created', {
+            'subscriber_id': self.subscriber_id,
+            'subscription_id': subscription.id,
+            'conditions': log_conditions
+        })
+        return subscription
+
+    def create_window_subscription(self, conditions) -> Subscription:
+        """Create a window-based subscription with specified conditions"""
+        subscription = Subscription(conditions=conditions, window_size=10, subscriber=self)
+        self.subscriptions[subscription.id] = subscription
+        # Convert conditions to a serializable format
+        log_conditions = [
+            {
+                'field': condition[0],
+                'operator': condition[1],
+                'value': str(condition[2])
+            }
+            for condition in subscription.conditions
+        ]
+        log_event(self.logger, 'window_subscription_created', {
+            'subscriber_id': self.subscriber_id,
+            'subscription_id': subscription.id,
+            'conditions': log_conditions,
+        })
+        return subscription
 
     def receive_message(self, message: Dict[str, Any]):
-        """Receive and store a message."""
+        """Receive and store a message"""
         self.received_messages.append(message)
-        self.logger.info(f"Subscriber {self.name} received message: {message}")
+        log_event(self.logger, 'message_received', {
+            'subscriber_id': self.subscriber_id,
+            'message': message
+        })
+
+    def get_received_messages(self) -> List[Dict[str, Any]]:
+        """Get all received messages"""
+        return self.received_messages
 
     def clear_messages(self):
-        """Clear received messages."""
+        """Clear received messages"""
         self.received_messages = []
 
-def generate_random_subscription() -> Dict[str, Any]:
-    """Generate a random subscription with random conditions"""
-    types = ['temperature', 'humidity', 'pressure']
-    selected_type = random.choice(types)
-    
-    if selected_type == 'temperature':
-        threshold = random.uniform(20, 30)
-        condition = lambda x: x > threshold
-    elif selected_type == 'humidity':
-        threshold = random.uniform(30, 70)
-        condition = lambda x: x < threshold
-    else:  # pressure
-        threshold = random.uniform(990, 1010)
-        condition = lambda x: x > threshold
+def generate_random_subscription(generator: GeneratorPubSub):
+    """Generate a random subscription using GeneratorPubSub"""
+    import threading  # Add this import at the top of the file if not already present
+    event = threading.Event()  # Create an event object
+    sub = generator.generate_single_sub()
+    event.set()  # Signal that the operation is complete
+    event.wait()  # Wait until the event is set
+    return sub
 
-    return {
-        'type': selected_type,
-        'value': condition
-    }
+def generate_random_window_description(generator: GeneratorPubSub):
+    """Generate a random window-based subscription description"""
+    import threading  # Add this import at the top of the file if not already present
+    event = threading.Event()  # Create an event object
+    sub = generator.generate_single_window_sub()
+    event.set()  # Signal that the operation is complete
+    event.wait()  # Wait until the event is set
+    return sub
 
-def generate_random_window_subscription() -> tuple[Dict[str, Any], int]:
+def generate_random_window_subscription(generator: GeneratorPubSub):
     """Generate a random window-based subscription with random conditions and window size"""
-    conditions = generate_random_subscription()
-    window_size = random.randint(3, 8)
-    return conditions, window_size 
+    conditions = generate_random_window_description(generator)
+    return conditions

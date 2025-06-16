@@ -1,109 +1,123 @@
-import logging
 import time
-import random
-from typing import Dict, Any, List
-
-from core import Configs, BrokerNetwork, Subscriber
+import json
 from core.publisher import Publisher
+from core.broker_network import BrokerNetwork
+from core.generator_configs import Configs
+from core.subscription import Subscription
+from core.subscriber import Subscriber, generate_random_subscription, generate_random_window_subscription
+from core.utils import setup_logging
+import threading
 
 def print_subscriber_messages(subscriber: Subscriber):
-    """Print messages received by a subscriber."""
-    print(f"\nMessages for Subscriber {subscriber.name}:")
+    """Print received messages for a subscriber"""
+    print(f"\nMessages received by {subscriber.subscriber_id}:")
     for msg in subscriber.received_messages:
-        print(f"  - {msg}")
+        print(json.dumps(msg, indent=2))
 
-def print_conditions(subscriber: Subscriber):
-    """Print subscription conditions in a readable format."""
-    print(f"\nSubscriptions for Subscriber {subscriber.name}:")
-    for i, sub in enumerate(subscriber.subscriptions, 1):
-        print(f"\nSubscription {i}:")
-        for field, condition in sub.conditions.items():
-            if callable(condition):
-                print(f"  {field}: {condition.__name__}")
+
+def print_conditions(field_name: str, condition_func):
+    """Print conditions in a readable format"""
+    try:
+        # Extract the lambda function's code object
+        lambda_code = condition_func.__code__
+        # Get the constants tuple and find the threshold value
+        constants = lambda_code.co_consts
+        threshold = None
+
+        # Look for numeric constants (threshold values)
+        for const in constants:
+            if isinstance(const, (int, float)) and const not in (0, 1):  # Exclude common non-threshold values
+                threshold = const
+                break
+
+        if threshold is None:
+            # Try to get from closure variables if it's a closure
+            if condition_func.__closure__:
+                for cell in condition_func.__closure__:
+                    if isinstance(cell.cell_contents, (int, float)):
+                        threshold = cell.cell_contents
+                        break
+
+        if threshold is None:
+            return f"{field_name} (custom condition)"
+
+        # Try to determine operator by testing the function
+        try:
+            if condition_func(threshold + 1):
+                operator = '>='
+            elif condition_func(threshold - 1):
+                operator = '<='
+            elif condition_func(threshold):
+                operator = '=='
             else:
-                print(f"  {field}: {condition}")
+                operator = '!='
+        except:
+            operator = '?'
+
+        return f"{field_name} {operator} {threshold}"
+    except Exception as e:
+        return f"{field_name} (condition analysis error: {e})"
+
 
 def main():
-    # Set up logging
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
+    # Setup logging
+    logger = setup_logging()
 
     # Initialize configurations
     configs = Configs(config_path='generator_configs.json')
-    
+    print(f"Configurations loaded: {configs.__dict__}")
+
     # Create broker network
-    broker_network = BrokerNetwork(
-        num_brokers=configs.broker_count,
-        window_size=configs.subscription_window_size,
-        logger=logger
-    )
-    
-    # Start the publisher
+    broker_network = BrokerNetwork(num_brokers=3, window_size=10, logger=logger)
+    broker_network.start()
+
+    # Create publisher with configurations
     publisher = Publisher(configs)
     publisher.start()
-    
-    # Create subscribers
-    subscribers = []
-    for i in range(configs.subscriber_count):
-        subscriber = Subscriber(f"subscriber_{i}", logger)
-        
-        # Add some random subscriptions
-        for j in range(2):  # Add 2 simple subscriptions
-            field = random.choice(configs.fields)
-            if field in configs.numeric_fields:
-                range_info = configs.get_field_range(field)
-                value = random.randint(range_info['min'], range_info['max'])
-                subscriber.add_subscription({field: lambda x, v=value: x == v})
-            elif field in configs.string_fields:
-                choices = configs.get_field_choices(field)
-                value = random.choice(choices)
-                subscriber.add_subscription({field: lambda x, v=value: x == v})
-        
-        # Add one window-based subscription
-        if configs.numeric_fields:
-            field = random.choice(configs.numeric_fields)
-            range_info = configs.get_field_range(field)
-            value = random.randint(range_info['min'], range_info['max'])
-            subscriber.add_window_subscription(
-                field,
-                lambda x, v=value: x > v,
-                configs.subscription_window_size
-            )
-        
-        subscribers.append(subscriber)
-        broker_network.add_subscriber(subscriber)
-    
-    # Print initial subscriptions
+
+    # Create 3 subscribers
+    subscribers = [
+        Subscriber(f"subscriber_{i}", logger,configs) for i in range(3)
+    ]
+
     for subscriber in subscribers:
-        print_conditions(subscriber)
-    
+        subscriber.start()
+
+    event = threading.Event()
+    for subscriber in subscribers:
+        for _ in range(2):
+            subscription_data = generate_random_subscription(subscriber.generator)
+            subscription = subscriber.create_simple_subscription(subscription_data)
+            broker_network.add_subscription(subscription)
+            print(f"Created subscription data: {subscription_data}")
+        subscription_data = generate_random_window_subscription(subscriber.generator)
+        subscription = subscriber.create_window_subscription(subscription_data)
+        broker_network.add_subscription(subscription)
+        print(f"\nCreated window subscription for {subscriber.subscriber_id}:")
+    event.set()  # Signal that the operation is complete
+    event.wait()  # Wait until the event is set
+
     try:
-        # Run for 30 seconds
+        # Generate and publish messages for 30 seconds
         start_time = time.time()
-        while time.time() - start_time < 30:
-            # Get publication from publisher
+        while time.time() - start_time < 60:
             if not publisher.publication_queue.empty():
                 publication = publisher.get_publication()
-                if publication:
-                    # Publish to all brokers
-                    broker_network.publish(publication)
-            
-            # Process any matches
-            for subscriber in subscribers:
-                subscriber.process_matches()
-            
-            time.sleep(0.1)  # Small delay to prevent CPU overuse
-            
-    except KeyboardInterrupt:
-        print("\nStopping simulation...")
+                broker_network.publish(publication)
+            time.sleep(1)
+
     finally:
-        # Cleanup
-        publisher.stop()
-        broker_network.stop()
-        
-        # Print final results
+        # Print received messages for each subscriber
         for subscriber in subscribers:
             print_subscriber_messages(subscriber)
+
+        # In finally block:
+        for subscriber in subscribers:
+            subscriber.stop()
+
+        # Stop the broker network
+        broker_network.stop()
+        publisher.stop()
 
 if __name__ == "__main__":
     main()

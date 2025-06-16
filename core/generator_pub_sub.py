@@ -101,6 +101,68 @@ class GeneratorPubSub:
             'duration': end_time - start_time
         }
 
+    def generate_single_sub(self) -> list[tuple]:
+        """Generate a single subscription list of tuples without threading"""
+        sub = []
+        print("Generating single subscription...")
+        for field, freq in self.configs.freq_fields.items():
+            if random.random() <= freq:
+                # Determine operator
+                if field in self.configs.freq_equality:
+                    eq_ratio = self.configs.freq_equality[field]
+                    operator = "=" if random.random() < eq_ratio else random.choice(
+                        [op for op in self.operators if op != "="]
+                    )
+                else:
+                    operator = random.choice(self.operators)
+                # Get schema info
+                field_schema = next((item for item in self.configs.schema if item['name'] == field), None)
+                if field_schema is None:
+                    continue
+                # Generate value
+                value = self.generate_random_value(field_schema)
+                # Add to subscription
+                sub.append((field, operator, value))
+        return sub
+
+    def generate_single_window_sub(self) -> list[tuple]:
+        """Generate a single window-based subscription with random processing criteria and dynamic field selection"""
+        sub = []
+        print("Generating single window subscription...")
+        for field, freq in self.configs.freq_fields.items():
+            if random.random() <= freq:
+                # Determine operator
+                if field in self.configs.freq_equality:
+                    eq_ratio = self.configs.freq_equality[field]
+                    operator = "=" if random.random() < eq_ratio else random.choice(
+                        [op for op in self.operators if op != "="]
+                    )
+                else:
+                    operator = random.choice(self.operators)
+                # Get schema info
+                field_schema = next((item for item in self.configs.schema if item['name'] == field), None)
+                if field_schema is None:
+                    continue
+                # Generate value
+                value = self.generate_random_value(field_schema)
+                # Add to subscription
+                sub.append((field, operator, value))
+        # Randomize between 1 and 2 fields for processing criteria
+        num_fields = random.choice([1, 2])
+        selected_fields = random.sample(
+            [field for field in self.configs.schema if field['type'] in ['int', 'float']], num_fields
+        )
+        for field in selected_fields:
+            processing_criteria = random.choice(["avg", "max", "min"])  # Randomly select avg, max, or min
+            dynamic_field_name = f"{processing_criteria}_{field['name']}"
+            operator = random.choice(self.operators)
+            # Generate value for dynamic field
+            value = self.generate_random_value(field)
+            # Add to subscription
+            sub.append((dynamic_field_name, operator, value))
+        print(f"Generated window subscription with {len(sub)} conditions {sub}")
+        return sub
+
     def generate_dataset(self, thread_num=1):
         start_time = time.time()
         sum_freqs = sum(self.configs.freq_fields.values())
@@ -204,7 +266,7 @@ class GeneratorPubSub:
 
         for field in self.configs.fields:
             count = sum(1 for sub in subs if sub and field in sub)
-            
+
             stats['sub_stats']['freq_fields'][field] = {
                 "count": count,
                 "percentage": count / len(subs),

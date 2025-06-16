@@ -1,84 +1,84 @@
-import logging
-from typing import Dict, Any, List, Optional
-from queue import Queue
+import time
+import uuid
+from typing import Dict, List, Any, Tuple
 
-from .proto_utils import parse_broker_message
 
 class Subscription:
-    def __init__(self, conditions: Dict[str, Any], window_size: Optional[int] = None):
+    def __init__(self, conditions, window_size=None, subscriber=None):
         self.conditions = conditions
         self.window_size = window_size
-        self.window_buffer: List[Dict[str, Any]] = []
-        self.notification_queue = Queue()
-        self.logger = logging.getLogger(__name__)
-        
+        self.window_buffer = []
+        self.id = str(uuid.uuid4())
+        self.subscriber = subscriber  # Reference to subscriber
+
     def matches(self, publication: Dict[str, Any]) -> bool:
-        """Check if a publication matches the subscription conditions."""
-        try:
-            if self.window_size is None:
-                # Simple subscription matching
-                for field, condition in self.conditions.items():
-                    if field in publication and not condition(publication[field]):
-                        return False
-                return True
-            else:
-                # Window-based subscription
-                self.window_buffer.append(publication)
-                if len(self.window_buffer) >= self.window_size:
-                    return self.process_window() is not None
+        """Check if a publication matches the subscription conditions"""
+        print(f"Checking publication against subscription {self.id} with conditions: {self.conditions.__repr__()}")
+        for field, operator, value in self.conditions:
+            if field not in publication:
                 return False
-        except Exception as e:
-            self.logger.error(f"Error matching publication: {str(e)}")
-            return False
-            
-    def process_window(self) -> Optional[Dict[str, Any]]:
-        """Process a window of publications and return a meta-publication if conditions are met."""
-        try:
-            if not self.window_buffer or len(self.window_buffer) < self.window_size:
-                return None
-                
-            # Get the field we're monitoring
-            field = next(iter(self.conditions.keys()))
-            
-            # Calculate average value for the window
-            values = [pub[field] for pub in self.window_buffer if field in pub]
-            if not values:
-                return None
-                
-            avg_value = sum(values) / len(values)
-            
-            # Check if average matches condition
-            if self.conditions[field](avg_value):
-                # Create meta-publication
-                meta_pub = {
-                    'type': field,
-                    'value': avg_value,
-                    'timestamp': self.window_buffer[-1]['timestamp'],
-                    'window_size': self.window_size
-                }
-                
-                # Clear buffer for next window
-                self.window_buffer = []
-                return meta_pub
-                
-            # Clear buffer for next window
-            self.window_buffer = []
+
+            pub_value = publication[field]
+
+            if operator == "=":
+                if pub_value != value:
+                    return False
+            elif operator == ">":
+                if not pub_value > value:
+                    return False
+            elif operator == ">=":
+                if not pub_value >= value:
+                    return False
+            elif operator == "<":
+                if not pub_value < value:
+                    return False
+            elif operator == "<=":
+                if not pub_value <= value:
+                    return False
+            elif operator == "!=":
+                if not pub_value != value:
+                    return False
+
+        return True
+
+    def process_window(self) -> Dict[str, Any]:
+        """Process the window buffer and return a meta-publication if conditions are met"""
+        if not self.window_buffer or len(self.window_buffer) < self.window_size:
             return None
-            
-        except Exception as e:
-            self.logger.error(f"Error processing window: {str(e)}")
-            self.window_buffer = []
-            return None
-            
-    def notify(self, serialized_notification: bytes):
-        """Add a notification to the queue."""
-        self.notification_queue.put(serialized_notification)
-        
-    def get_notification(self) -> Optional[Dict[str, Any]]:
-        """Get the next notification from the queue."""
-        try:
-            serialized = self.notification_queue.get_nowait()
-            _, content = parse_broker_message(serialized)
-            return content
-        except:
-            return None 
+        # Example: Calculate average, minimum, and maximum for fields starting with 'avg_', 'min_', or 'max_'
+        aggregated_fields = {}
+        for field, operator, _ in self.conditions:
+            if field.startswith(('avg_', 'min_', 'max_')):
+                prefix, base_field = field.split('_', 1)  # Split prefix and base field
+                values = [pub[base_field] for pub in self.window_buffer if base_field in pub]
+                if values:
+                    if prefix == 'avg':
+                        aggregated_fields[field] = sum(values) / len(values)
+                    elif prefix == 'min':
+                        aggregated_fields[field] = min(values)
+                    elif prefix == 'max':
+                        aggregated_fields[field] = max(values)
+
+        # Check if window conditions are met
+        for field, operator, value in self.conditions:
+            if field.startswith(('avg_', 'min_', 'max_')):
+                if field not in aggregated_fields:
+                    return None
+                agg_value = aggregated_fields[field]
+                if operator == ">" and not agg_value > value:
+                    return None
+                elif operator == ">=" and not agg_value >= value:
+                    return None
+                elif operator == "<" and not agg_value < value:
+                    return None
+                elif operator == "<=" and not agg_value <= value:
+                    return None
+                elif operator == "=" and not agg_value == value:
+                    return None
+        # Create a meta-publication with aggregated fields
+        meta_publication = {
+            'id': f"meta_{self.id}_{int(time.time() * 1000)}",
+            'timestamp': int(time.time()),
+            'aggregated_fields': aggregated_fields
+        }
+        return meta_publication

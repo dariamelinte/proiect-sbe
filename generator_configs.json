@@ -68,8 +68,13 @@
             "format": "%Y-%m-%d"
         }
     ],
-    "interval": 0.4,
-    "window_size": 10,
-    "num_brokers": 3,
-    "num_subscribers": 3
+    "freq_fields": {
+      "temperature": 0.07,
+      "created_at": 0.8,
+      "wind": 0.09,
+      "rain": 0.83
+    },
+    "freq_eq": {
+      "rain": 0.59
+    }
 }
