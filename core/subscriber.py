@@ -1,5 +1,6 @@
 import random
 import uuid
+from queue import Queue
 from typing import Dict, Any, List, Callable
 import logging
 from datetime import datetime
@@ -19,9 +20,10 @@ class Subscriber:
         self.configs = configs
         self.generator = GeneratorPubSub(configs) if configs else None
         self.received_messages: List[Dict[str, Any]] = []
-
+        self.latencies: List[float] = []
         self.is_running = False
         self.sub_thread = None
+        self.message_queue = Queue()
 
     def start(self):
         self.is_running = True
@@ -36,23 +38,32 @@ class Subscriber:
         print(f"{self.subscriber_id} stopped")
 
     def run(self):
-        """Periodically add new subscriptions every 30 seconds"""
+        print(f"{self.subscriber_id} thread started")
         while self.is_running:
             try:
-                # Add a simple subscription
-                simple_cond = generate_random_subscription(self.generator)
-                self.create_simple_subscription(simple_cond)
-                print(f"{self.subscriber_id} added new simple subscription")
+                # Try to get a message with timeout so thread stays responsive
+                message = self.message_queue.get(timeout=1)
+                self.process_message(message)  # You need to implement this to handle incoming publications
+            except queue.Empty:
+                # No message received, time to add subscriptions?
+                # Could add new subscriptions here every N seconds using a timer logic
 
-                # Optionally add a window subscription too
-                if random.random() < 0.5:
-                    window_cond = generate_random_window_subscription(self.generator)
-                    self.create_window_subscription(window_cond)
-                    print(f"{self.subscriber_id} added new window subscription")
+                current_time = time.time()
+                if not hasattr(self, "_last_sub_time"):
+                    self._last_sub_time = 0
+                if current_time - self._last_sub_time > 60:
+                    simple_cond = generate_random_subscription(self.generator)
+                    self.create_simple_subscription(simple_cond)
+                    print(f"{self.subscriber_id} added new simple subscription")
 
-                time.sleep(30)
-            except Exception as e:
-                self.logger.error(f"{self.subscriber_id} error in subscription loop: {e}")
+                    if random.random() < 0.3:
+                        window_cond = generate_random_window_subscription(self.generator)
+                        self.create_window_subscription(window_cond)
+                        print(f"{self.subscriber_id} added new window subscription")
+
+                    self._last_sub_time = current_time
+
+        print(f"{self.subscriber_id} thread exiting")
 
     def create_simple_subscription(self, conditions) -> Subscription:
         """Create a simple subscription with specified conditions"""
@@ -94,12 +105,29 @@ class Subscriber:
         return subscription
 
     def receive_message(self, message: Dict[str, Any]):
-        """Receive and store a message"""
+        receive_time = time.time()
+
+        # Transformă timestamp-ul din mesaj (ISO) în epoch
+        pub_timestamp_str = message.get('timestamp')
+        pub_timestamp = datetime.fromisoformat(pub_timestamp_str).timestamp() if pub_timestamp_str else receive_time
+
+        latency = receive_time - pub_timestamp
+        # Salvează latenta undeva, ex:
+        if not hasattr(self, 'latencies'):
+            self.latencies = []
+        self.latencies.append(latency)
+
         self.received_messages.append(message)
         log_event(self.logger, 'message_received', {
             'subscriber_id': self.subscriber_id,
-            'message': message
+            'message': message,
+            'latency': latency
         })
+
+    def average_latency(self):
+        if hasattr(self, 'latencies') and self.latencies:
+            return sum(self.latencies) / len(self.latencies)
+        return 0.0
 
     def get_received_messages(self) -> List[Dict[str, Any]]:
         """Get all received messages"""

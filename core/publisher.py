@@ -16,55 +16,55 @@ class Publisher:
         self.is_running = False
         self.publication_thread = None
 
-    def generate_publications_proto(self):
+    def generate_publications_proto(self, batch_size=10):
         while self.is_running:
-            data = self.generator.generate_pub()
-            if data:
-                data['timestamp'] = datetime.now().isoformat()
+            for _ in range(batch_size):
+                data = self.generator.generate_pub()
+                if data:
+                    data['timestamp'] = datetime.now().isoformat()
+                    # Construim mesajul Protobuf
+                    pub_msg = pb.Publication(
+                        station_id=data['station_id'],
+                        city=data['city'],
+                        direction=data['direction'],
+                        temperature=data['temperature'],
+                        rain=data['rain'],
+                        wind=data['wind'],
+                        created_at=data['created_at'],
+                        timestamp=data['timestamp'],
+                    )
 
-                # Construim mesajul Protobuf
-                pub_msg = pb.Publication(
-                    station_id=data['station_id'],
-                    city=data['city'],
-                    direction=data['direction'],
-                    temperature=data['temperature'],
-                    rain=data['rain'],
-                    wind=data['wind'],
-                    created_at=data['created_at'],
-                    timestamp=data['timestamp'],
-                )
+                    # Serializăm mesajul într-un bytes
+                    serialized_pub = pub_msg.SerializeToString()
 
-                # Serializăm mesajul într-un bytes
-                serialized_pub = pub_msg.SerializeToString()
-
-                # Adăugăm bytes în coadă (transmiterea binară)
-                self.publication_queue.put(serialized_pub)
+                    # Adăugăm bytes în coadă (transmiterea binară)
+                    self.publication_queue.put(serialized_pub)
 
             time.sleep(0.1)
 
-    def generate_publications(self):
-        """Generate publications using the GeneratorPubSub and add them to the queue"""
+    def generate_publications(self, batch_size=10):
+        """Generate multiple publications per iteration using GeneratorPubSub and add them to the queue"""
         while self.is_running:
-            # Generate a single publication
-            publication = self.generator.generate_pub()
-            if publication:
-                # Add timestamp to the publication
-                publication['timestamp'] = datetime.now().isoformat()
-                self.publication_queue.put(publication)
-            time.sleep(0.1)  # Small delay to control generation rate
+            for _ in range(batch_size):
+                publication = self.generator.generate_pub()
+                if publication:
+                    publication['timestamp'] = datetime.now().isoformat()
+                    self.publication_queue.put(publication)
+            time.sleep(0.01)  # Small delay to control generation rate
 
-    def start(self):
-        """Start the publisher"""
+    def start(self, num_threads=8):
         self.is_running = True
-        self.publication_thread = threading.Thread(target=self.generate_publications_proto)
-        self.publication_thread.start()
-        print("Publisher started")
+        self.threads = []
+        for _ in range(num_threads):
+            t = threading.Thread(target=self.generate_publications_proto)
+            t.start()
+            self.threads.append(t)
+        print(f"Publisher started with {num_threads} threads")
 
     def stop(self):
-        """Stop the publisher"""
         self.is_running = False
-        if self.publication_thread:
-            self.publication_thread.join()
+        for t in self.threads:
+            t.join()
         print("Publisher stopped")
 
     def get_publication(self) -> Dict[str, Any]:

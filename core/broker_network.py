@@ -48,10 +48,14 @@ class BrokerNetwork:
         return subscription_id
 
     def publish(self, publication: Dict[str, Any]):
-        """Publish to all brokers in the network"""
-        log_event(self.logger, 'publication_distributed', {
-            'num_brokers': len(self.brokers),
-            'publication': publication
-        })
+        broker = self.brokers[self.current_broker_index]
+        self.current_broker_index = (self.current_broker_index + 1) % len(self.brokers)
+        broker.publication_queue.put(publication)
+
+    def get_all_broker_stats(self):
+        stats = []
         for broker in self.brokers:
-            broker.publication_queue.put(publication)
+            stat = broker.get_stats()
+            stat['average_latency_ms'] = broker.get_average_latency()
+            stats.append(stat)
+        return stats

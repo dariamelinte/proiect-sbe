@@ -1,0 +1,80 @@
+{
+    "threads": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+    ],
+    "schema": [
+        {
+            "name": "station_id",
+            "type": "int",
+            "min": 1,
+            "max": 300
+        },
+        {
+            "name": "city",
+            "type": "string",
+            "choices": [
+                "Bucharest",
+                "Cluj",
+                "Iasi",
+                "Timisoara",
+                "Constanta",
+                "Brasov",
+                "Sibiu",
+                "Oradea"
+            ]
+        },
+        {
+            "name": "direction",
+            "type": "string",
+            "choices": [
+                "N",
+                "NE",
+                "E",
+                "SE",
+                "S",
+                "SW",
+                "W",
+                "NW"
+            ]
+        },
+        {
+            "name": "temperature",
+            "type": "float",
+            "min": -10.0,
+            "max": 40.0
+        },
+        {
+            "name": "rain",
+            "type": "float",
+            "min": 0,
+            "max": 1
+        },
+        {
+            "name": "wind",
+            "type": "float",
+            "min": 0,
+            "max": 100
+        },
+        {
+            "name": "created_at",
+            "type": "date",
+            "min": "2020-01-01",
+            "max": "2025-12-31",
+            "format": "%Y-%m-%d"
+        }
+    ],
+    "freq_fields": {
+      "temperature": 0.07,
+      "created_at": 0.8,
+      "wind": 0.09,
+      "rain": 0.83
+    },
+    "freq_eq": {
+      "rain": 0.25
+    }
+}

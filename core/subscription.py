@@ -11,7 +11,11 @@ class Subscription:
         self.id = str(uuid.uuid4())
         self.subscriber = subscriber  # Reference to subscriber
 
-    def matches(self, publication: Dict[str, Any]) -> bool:
+    @property
+    def subscriber_id(self):
+        return self.subscriber.subscriber_id if self.subscriber else None
+
+    def matches(self, publication) -> bool:
         """Check if a publication matches the subscription conditions"""
         print(f"Checking publication against subscription {self.id} with conditions: {self.conditions.__repr__()}")
         for field, operator, value in self.conditions:

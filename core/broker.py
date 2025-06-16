@@ -1,4 +1,5 @@
 import threading
+from datetime import datetime
 from typing import Dict, Any
 from queue import Queue
 from .proto import publication_pb2 as pb
@@ -17,6 +18,11 @@ class Broker:
         self.processing_thread = None
         self.lock = threading.Lock()
         self.logger = logger or logging.getLogger('pubsub_system')
+        self.received_publications = 0
+        self.sent_to_subscribers = 0
+        self.matching_attempts = 0
+        self.matches_found = 0
+        self.latencies = []  # Store latencies for average calculation
 
     def add_subscription(self, subscription: Subscription) -> str:
         """Add a new subscription and return its ID"""
@@ -50,20 +56,48 @@ class Broker:
 
     def process_publication(self, publication: Dict[str, Any]):
         with self.lock:
+            self.received_publications += 1
+
+            latency_ms = None
+            if 'timestamp' in publication:
+                try:
+                    sent_time = datetime.fromisoformat(publication['timestamp'])
+                    now = datetime.now()
+                    latency = (now - sent_time).total_seconds() * 1000  # ms
+                    if latency < 0:
+                        # Poate timestamp-ul e din viitor, ignorăm
+                        latency = None
+                    else:
+                        self.latencies.append(latency)
+                        latency_ms = latency
+                except Exception as e:
+                    self.logger.warning(f"Failed to parse timestamp: {e}")
+
             log_event(self.logger, 'publication_received', {
                 'broker_id': self.broker_id,
-                'publication': publication
+                'publication': publication,
+                'latency_ms': latency_ms
             })
 
-            for sub_id, subscription in self.subscriptions.items():
-                if subscription.window_size is None:
-                    self._process_simple_subscription(sub_id, subscription, publication)
-                else:
-                    self._process_window_subscription(sub_id, subscription, publication)
+            notified_subscribers = set()
 
-    def _process_simple_subscription(self, sub_id, subscription, publication):
-        if subscription.matches(publication):
-            self.notify_subscriber(sub_id, publication)
+            for sub_id, subscription in self.subscriptions.items():
+                if subscription.subscriber_id in notified_subscribers:
+                    continue
+
+                self.matching_attempts += 1
+
+                if subscription.window_size is None:
+                    if subscription.matches(publication):
+                        self.matches_found += 1
+                        self.sent_to_subscribers += 1
+                        subscription.subscriber.receive_message(publication)
+                        notified_subscribers.add(subscription.subscriber_id)
+                else:
+                    matched = self._process_window_subscription(sub_id, subscription, publication)
+                    if matched:
+                        self.sent_to_subscribers += 1
+                        notified_subscribers.add(subscription.subscriber_id)
 
     def _process_window_subscription(self, sub_id, subscription, publication):
         subscription.window_buffer.append(publication)
@@ -74,22 +108,28 @@ class Broker:
             'buffer_size': len(subscription.window_buffer),
             'window_size': subscription.window_size
         })
-
         if len(subscription.window_buffer) >= subscription.window_size:
             log_event(self.logger, 'window_size_reached', {
-                      'broker_id': self.broker_id,
-                      'subscription_id': sub_id,
-                      'window_size': subscription.window_size
-                      })
+                'broker_id': self.broker_id,
+                'subscription_id': sub_id,
+                'window_size': subscription.window_size
+            })
             meta_pub = subscription.process_window()
             if meta_pub:
                 self.notify_subscriber(sub_id, meta_pub)
                 log_event(self.logger, 'window_subscription_generated', {
-                          'broker_id': self.broker_id,
-                          'subscription_id': sub_id,
-                          'publication': meta_pub
-                          })
+                    'broker_id': self.broker_id,
+                    'subscription_id': sub_id,
+                    'publication': meta_pub
+                })
+                subscription.window_buffer = []
+                return True
             subscription.window_buffer = []
+        return False
+
+    def _process_simple_subscription(self, sub_id, subscription, publication):
+        if subscription.matches(publication):
+            self.notify_subscriber(sub_id, publication)
 
     def notify_subscriber(self, subscription_id: str, publication: Dict[str, Any]):
         subscription = self.subscriptions.get(subscription_id)
@@ -135,6 +175,20 @@ class Broker:
                 self.process_publication(publication)
             except:
                 continue
+
+    def get_average_latency(self):
+        if hasattr(self, 'latencies') and self.latencies:
+            return sum(self.latencies) / len(self.latencies)
+        return 0
+
+    def get_stats(self):
+        return {
+            "broker_id": self.broker_id,
+            "received_publications": self.received_publications,
+            "sent_to_subscribers": self.sent_to_subscribers,
+            "matching_attempts": self.matching_attempts,
+            "matches_found": self.matches_found
+        }
 
     def _process_loop_proto(self):
         while self.is_running:
