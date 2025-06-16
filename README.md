@@ -6,20 +6,20 @@ A distributed content-based publish/subscribe system implemented in Python, feat
 
 ### Completed Tasks (25/35 points)
 
-1. ✅ Publisher Node (5/5 points)
+1. ✅ Publisher Node (5 points)
    - Implemented random publication generation
    - Supports multiple message types (temperature, humidity, pressure)
    - Configurable generation intervals
    - Timestamp addition to publications
 
-2. ✅ Broker Network (10/10 points)
+2. ✅ Broker Network (10 points)
    - Implemented 3-broker overlay network
    - Content-based filtering
    - Window-based publication processing
    - Round-robin subscription distribution
    - Thread-safe operations
 
-3. ✅ Subscriber Nodes (5/5 points)
+3. ✅ Subscriber Nodes (5 points)
    - Implemented 3 subscriber nodes
    - Support for both simple and window-based subscriptions
    - Random subscription generation
