@@ -40,6 +40,8 @@ A distributed content-based publish/subscribe system implemented in Python, feat
      - Average delivery latency
      - Matching rate comparison (100% vs 25% equality)
    - Generate evaluation report
+      - [PDF Report](/docs/Raport.pdf)
+      - [HTML Report](https://dariamelinte.github.io/proiect-sbe/pubsub_performance_report.html)
 
 ## System Architecture
 
