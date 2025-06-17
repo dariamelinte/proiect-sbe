@@ -120,6 +120,8 @@ class Broker:
         """Notify the subscriber of a matched publication"""
         subscription = self.subscriptions.get(subscription_id)
         if subscription and subscription.subscriber:
+            # Adăugăm un ID unic pentru publicație pentru a evita duplicatele
+            publication['unique_id'] = f"{publication['id']}_{self.broker_id}"
             subscription.subscriber.receive_message(publication)
             log_event(self.logger, 'subscriber_notified', {
                 'broker_id': self.broker_id,
@@ -197,3 +199,12 @@ class Broker:
                 self.process_publication(publication_dict)
             except Exception:
                 continue
+
+    def publish(self, publication: Dict[str, Any]):
+        """Publish a message to all brokers to ensure all subscriptions are checked"""
+        for broker in self.brokers:
+            broker.publication_queue.put(publication)
+        log_event(self.logger, 'publication_distributed', {
+            'publication': publication,
+            'num_brokers': len(self.brokers)
+        })
