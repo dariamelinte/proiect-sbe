@@ -8,11 +8,11 @@ from core.subscriber import Subscriber, generate_random_subscription, generate_r
 from core.utils import setup_logging
 import threading
 
-def print_subscriber_messages(subscriber: Subscriber):
-    """Print received messages for a subscriber"""
-    print(f"\nMessages received by {subscriber.subscriber_id}:")
-    for msg in subscriber.received_messages:
-        print(json.dumps(msg, indent=2))
+def save_subscriber_messages(subscriber: Subscriber, filename: str):
+    """Save received messages for a subscriber to a file"""
+    with open(filename, 'w') as file:
+        for msg in subscriber.received_messages:
+            file.write(json.dumps(msg, indent=2) + '\n')
 
 
 def print_conditions(field_name: str, condition_func):
@@ -104,12 +104,12 @@ def main():
             if not publisher.publication_queue.empty():
                 publication = publisher.get_publication()
                 broker_network.publish(publication)
-            time.sleep(1)
+            time.sleep(0.01)
 
     finally:
         # Print received messages for each subscriber
         for subscriber in subscribers:
-            print_subscriber_messages(subscriber)
+            save_subscriber_messages(subscriber, f"{subscriber.subscriber_id}_main_messages.json")
 
         # In finally block:
         for subscriber in subscribers:

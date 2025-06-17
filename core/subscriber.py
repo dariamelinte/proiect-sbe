@@ -60,7 +60,7 @@ class Subscriber:
                     self.create_simple_subscription(simple_cond)
                     print(f"{self.subscriber_id} added new simple subscription")
 
-                    if random.random() < 0.3:
+                    if random.random() < 0.6:
                         window_cond = generate_random_window_subscription(self.generator)
                         self.create_window_subscription(window_cond)
                         print(f"{self.subscriber_id} added new window subscription")
