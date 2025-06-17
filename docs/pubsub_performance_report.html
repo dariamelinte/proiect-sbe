@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raport de evaluare - Pub/Sub</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            color: #212529;
+            font-weight: 300;
+        }
+
+        .authors {
+            font-size: 1.1em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .date {
+            font-size: 1em;
+            color: #868e96;
+        }
+
+        .abstract {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 4px;
+            margin: 30px 0;
+            border-left: 3px solid #6c757d;
+        }
+
+        .abstract h2 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            font-weight: 400;
+        }
+
+        .section {
+            margin: 30px 0;
+            padding: 20px 0;
+        }
+
+        .section h2 {
+            color: #212529;
+            font-size: 1.6em;
+            margin-bottom: 20px;
+            font-weight: 400;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #495057;
+            font-size: 1.2em;
+            margin: 25px 0 15px 0;
+            font-weight: 400;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: 300;
+            color: #212529;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: white;
+        }
+
+        .results-table th {
+            background: #f8f9fa;
+            color: #495057;
+            padding: 12px 15px;
+            text-align: center;
+            font-weight: 500;
+            border: 1px solid #dee2e6;
+        }
+
+        .results-table td {
+            padding: 10px 15px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+
+        .results-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            margin: 25px auto;
+            max-width: 75%;
+        }
+
+        .chart-title {
+            font-size: 1.1em;
+            color: #495057;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 400;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .chart-wrapper.small {
+            height: 200px;
+        }
+
+        .architecture-diagram {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin: 25px 0;
+        }
+
+        .component {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            min-width: 150px;
+        }
+
+        .component h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1em;
+            font-weight: 500;
+        }
+
+        .arrow {
+            font-size: 1.5em;
+            color: #6c757d;
+        }
+
+        .conclusions {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 4px;
+            border-left: 3px solid #495057;
+        }
+
+        .conclusions h2 {
+            color: #495057;
+        }
+
+        ul {
+            padding-left: 25px;
+            margin: 15px 0;
+        }
+
+        li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 3px solid #adb5bd;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .architecture-diagram {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .arrow {
+                transform: rotate(90deg);
+            }
+
+            .chart-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Raport de evaluare - Pub/Sub</h1>
+            <div class="authors">Miruna Curduman, Daria Melinte, Tudor Aungurenci</div>
+            <div class="date">Iunie 2025</div>
+        </div>
+
+        <div class="abstract">
+            <h2>Abstract</h2>
+            <p>Această lucrare evaluează performanța unui sistem distribuit de tip publish/subscribe,
+                      bazat pe filtrare după conținut și capabil să proceseze ferestre de publicații.
+                      Evaluarea a fost realizată prin simularea unui flux de 10.000 de subscripții simple,
+                      transmise printr-o rețea de brokeri care filtrează și direcționează publicațiile către subscriberi.</p>
+        </div>
+
+        <div class="section">
+            <h2>1. Introducere</h2>
+            <p>Acest experiment urmărește evaluarea performanței unui sistem publish-subscribe bazat pe conținut, capabil să proceseze atât mesaje individuale, cât și secvențe de mesaje grupate în ferestre temporale.</p>
+
+            <div class="highlight">
+                <strong>Parametri măsurați:</strong>
+                <ul>
+                    <li><strong>Rata de livrare a mesajelor</strong> — câte mesaje sunt livrate cu succes într-un interval de 3 minute</li>
+                    <li><strong>Latența medie de livrare</strong> — timpul mediu de la generare până la primire</li>
+                    <li><strong>Rata de potrivire</strong> — procentajul de mesaje care corespund criteriilor de filtrare</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>2. Arhitectura sistemului</h2>
+            <div class="architecture-diagram">
+                <div class="component">
+                    <h4>Publisher</h4>
+                    <p>Generează mesaje continue cu Protocol Buffers</p>
+                </div>
+                <div class="arrow">→</div>
+                <div class="component">
+                    <h4>Brokeri</h4>
+                    <p>Rețea de 2-3 brokeri cu load balancing</p>
+                </div>
+                <div class="arrow">→</div>
+                <div class="component">
+                    <h4>Subscribers</h4>
+                    <p>Primesc mesaje filtrate pe baza subscripțiilor</p>
+                </div>
+            </div>
+
+            <h3>Componentele principale</h3>
+            <ul>
+                <li><strong>Publisher:</strong> Generează continuu mesaje cu date aleatorii folosind mai multe thread-uri</li>
+                <li><strong>Brokeri:</strong> Rețea de 2-3 brokeri cu distribuția sarcinii prin round-robin</li>
+                <li><strong>Subscribers:</strong> Noduri care primesc mesajele potrivite cu subscripțiile lor</li>
+                <li><strong>Generator de date:</strong> Creează publicații și subscripții aleatorii configurabile</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>3. Rezultate și interpretare</h2>
+
+            <h3>Tabel comparativ rezultate</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Configurație</th>
+                        <th>Publicații generate</th>
+                        <th>Publicații livrate</th>
+                        <th>% Livrate</th>
+                        <th>Latență medie (ms)</th>
+                        <th>Rată potrivire (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>25%</strong></td>
+                        <td>36,675</td>
+                        <td>35,590</td>
+                        <td>97.07%</td>
+                        <td>7.85</td>
+                        <td>27.73%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>100%</strong></td>
+                        <td>36,675</td>
+                        <td>35,675</td>
+                        <td>97.27%</td>
+                        <td>7.91</td>
+                        <td>9.89%</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Potriviri găsite de fiecare broker</h3>
+            <div class="chart-container">
+                <div class="chart-title">Numărul de potriviri găsite per broker în cele două configurații</div>
+                <div class="chart-wrapper">
+                    <canvas id="brokerMatchesChart"></canvas>
+                </div>
+            </div>
+
+            <h3>Latența medie per configurație</h3>
+            <div class="chart-container">
+                <div class="chart-title">Comparația latenței medii (ms)</div>
+                <div class="chart-wrapper small">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+            </div>
+
+            <h3>Rata de potrivire per configurație</h3>
+            <div class="chart-container">
+                <div class="chart-title">Rata de potrivire globală (%)</div>
+                <div class="chart-wrapper small">
+                    <canvas id="matchRateChart"></canvas>
+                </div>
+            </div>
+
+            <h3>Statistici Brokeri - Configurație 25%</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Broker ID</th>
+                        <th>Publicații primite</th>
+                        <th>Trimise subscriberilor</th>
+                        <th>Încercări potrivire</th>
+                        <th>Potriviri găsite</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>broker_0</td>
+                        <td>11,863</td>
+                        <td>11,863</td>
+                        <td>39,551,242</td>
+                        <td>11,884,493</td>
+                    </tr>
+                    <tr>
+                        <td>broker_1</td>
+                        <td>11,864</td>
+                        <td>11,864</td>
+                        <td>39,542,712</td>
+                        <td>9,790,136</td>
+                    </tr>
+                    <tr>
+                        <td>broker_2</td>
+                        <td>11,863</td>
+                        <td>11,863</td>
+                        <td>39,539,379</td>
+                        <td>11,219,146</td>
+                    </tr>
+                    <tr style="background: #e9ecef; font-weight: bold;">
+                        <td>Total</td>
+                        <td>35,590</td>
+                        <td>35,590</td>
+                        <td>118,633,333</td>
+                        <td>32,893,775</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Statistici Brokeri - Configurație 100%</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Broker ID</th>
+                        <th>Publicații primite</th>
+                        <th>Trimise subscriberilor</th>
+                        <th>Încercări potrivire</th>
+                        <th>Potriviri găsite</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>broker_0</td>
+                        <td>11,891</td>
+                        <td>11,891</td>
+                        <td>39,644,594</td>
+                        <td>3,977,794</td>
+                    </tr>
+                    <tr>
+                        <td>broker_1</td>
+                        <td>11,892</td>
+                        <td>11,892</td>
+                        <td>39,636,036</td>
+                        <td>3,653,540</td>
+                    </tr>
+                    <tr>
+                        <td>broker_2</td>
+                        <td>11,892</td>
+                        <td>11,892</td>
+                        <td>39,636,036</td>
+                        <td>4,131,937</td>
+                    </tr>
+                    <tr style="background: #e9ecef; font-weight: bold;">
+                        <td>Total</td>
+                        <td>35,675</td>
+                        <td>35,675</td>
+                        <td>118,916,666</td>
+                        <td>11,763,271</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section conclusions">
+            <h2>4. Discuții și concluzii</h2>
+            <p>Rezultatele obținute în acest experiment sunt concludente și relevante pentru evaluarea performanței sistemului publish-subscribe dezvoltat.</p>
+
+            <h3>Caracteristici de performanță demonstrate:</h3>
+            <ul>
+                <li>Latență foarte scăzută (sub 8ms)</li>
+                <li>Rată de livrare ridicată (peste 97%)</li>
+                <li>Scalabilitate bună cu distribuirea încărcăturii între brokeri</li>
+            </ul>
+
+            <h3>Impactul configurațiilor:</h3>
+            <ul>
+                <li><strong>27.73%</strong> rată de potrivire pentru configurația cu 25% operatori de egalitate</li>
+                <li><strong>9.89%</strong> rată de potrivire pentru configurația cu 100% operatori de egalitate</li>
+                <li>Subscripțiile cu operator de egalitate sunt mai restrictive</li>
+                <li>Poate fi avantajos în scenarii unde este necesară filtrare foarte precisă</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Configurare Chart.js pentru design minimalist
+        Chart.defaults.font.family = 'Arial';
+        Chart.defaults.font.size = 12;
+        Chart.defaults.color = '#495057';
+
+        // Grafic pentru potriviri găsite de fiecare broker
+        const brokerCtx = document.getElementById('brokerMatchesChart').getContext('2d');
+        new Chart(brokerCtx, {
+            type: 'bar',
+            data: {
+                labels: ['broker_0', 'broker_1', 'broker_2'],
+                datasets: [{
+                    label: '25% Config',
+                    data: [11884493, 9790136, 11219146],
+                    backgroundColor: '#6c757d',
+                    borderColor: '#495057',
+                    borderWidth: 1
+                }, {
+                    label: '100% Config',
+                    data: [3977794, 3653540, 4131937],
+                    backgroundColor: '#adb5bd',
+                    borderColor: '#6c757d',
+                    borderWidth: 1
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'right',
+                        color: '#495057',
+                        font: {
+                            weight: 'bold'
+                        },
+                        formatter: function(value) {
+                            return (value / 1000000).toFixed(1) + 'M';
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        right: 80
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#e9ecef'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: '#e9ecef'
+                        }
+                    }
+                },
+                animation: false
+            }
+        });
+
+        // Grafic pentru latență
+        const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+        new Chart(latencyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['25% Config', '100% Config'],
+                datasets: [{
+                    label: 'Latență (ms)',
+                    data: [7.85, 7.91],
+                    backgroundColor: '#6c757d',
+                    borderColor: '#495057',
+                    borderWidth: 1
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'right',
+                        color: '#495057',
+                        font: {
+                            weight: 'bold'
+                        },
+                        formatter: function(value) {
+                            return value + 'ms';
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        right: 60
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 10,
+                        grid: {
+                            color: '#e9ecef'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: '#e9ecef'
+                        }
+                    }
+                },
+                animation: false
+            }
+        });
+
+        // Grafic pentru rata de potrivire
+        const matchRateCtx = document.getElementById('matchRateChart').getContext('2d');
+        new Chart(matchRateCtx, {
+            type: 'bar',
+            data: {
+                labels: ['25% Config', '100% Config'],
+                datasets: [{
+                    label: 'Rata de potrivire (%)',
+                    data: [27.73, 9.89],
+                    backgroundColor: '#6c757d',
+                    borderColor: '#495057',
+                    borderWidth: 1
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'right',
+                        color: '#495057',
+                        font: {
+                            weight: 'bold'
+                        },
+                        formatter: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        right: 70
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 30,
+                        grid: {
+                            color: '#e9ecef'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: '#e9ecef'
+                        }
+                    }
+                },
+                animation: false
+            }
+        });
+    </script>
+</body>
+</html>
