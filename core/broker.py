@@ -204,7 +204,7 @@ class Broker:
         """Publish a message to all brokers to ensure all subscriptions are checked"""
         for broker in self.brokers:
             broker.publication_queue.put(publication)
-        log_event(self.logger, 'publication_distributed', {
+        log_event(self.logger, 'publication_broadcasted', {
             'publication': publication,
             'num_brokers': len(self.brokers)
         })
