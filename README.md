@@ -32,36 +32,14 @@ A distributed content-based publish/subscribe system implemented in Python, feat
    - Modify publisher-broker communication
    - Update broker-subscriber communication
 
-
-### Remaining Tasks (10 points)
-
-1. 🔄 System Evaluation (10 points)
-   - [ ] Implement performance measurement tools
-   - [ ] Run 10,000 simple subscription test
-   - [ ] Measure delivery statistics:
-     - [ ] Successful deliveries in 3-minute window
-     - [ ] Average delivery latency
-     - [ ] Matching rate comparison (100% vs 25% equality)
-   - [ ] Generate evaluation report
-
-### Bonus Tasks (15-20 points)
-
-1. 🔄 Advanced Routing (5 points)
-   - [ ] Implement distributed subscription routing
-   - [ ] Multi-broker message routing
-   - [ ] Partial matching across brokers
-
-2. 🔄 Fault Tolerance (5 points)
-   - [ ] Implement broker failure detection
-   - [ ] Add message persistence
-   - [ ] Handle subscription recovery
-   - [ ] Ensure no notification loss
-
-3. 🔄 Message Privacy (5-10 points)
-   - [ ] Implement message encryption
-   - [ ] Add encrypted matching
-   - [ ] Secure broker communication
-   - [ ] Privacy-preserving subscriptions
+5. ✅ System Evaluation (10 points)
+   - Implement performance measurement tools
+   - Run 10,000 simple subscription test
+   - Measure delivery statistics:
+     - Successful deliveries in 3-minute window
+     - Average delivery latency
+     - Matching rate comparison (100% vs 25% equality)
+   - Generate evaluation report
 
 ## System Architecture
 
