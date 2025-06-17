@@ -15,15 +15,13 @@ from .utils import create_dir
 class GeneratorPubSub:
     def __init__(self, configs: Configs):
         self.configs = configs
-
         self.operators = ["=", ">", ">=", "<", "<=", "!="]
-
         self.lock = threading.Lock()
-
         self.subs_generate = 0
         self.pubs_generate = 0
 
     def generate_random_value(self, field):
+        """Generate a random value based on the field type and constraints"""
         if field['type'] == 'int':
             return random.randint(field['min'], field['max'])
 
@@ -42,6 +40,7 @@ class GeneratorPubSub:
             return random_date.strftime(field['format'])
 
     def generate_pub(self):
+        """Generate a single publication with random values for each field in the schema"""
         try:
             publication = {}
             for field in self.configs.schema:
@@ -52,6 +51,7 @@ class GeneratorPubSub:
             return None
 
     def generate_pubs(self, nr_pubs, result, index, timing):
+        """Generate a specified number of publications in a separate thread"""
         start_time = time.time()
         result[index] = [self.generate_pub() for _ in range(nr_pubs)]
         end_time = time.time()
@@ -62,6 +62,7 @@ class GeneratorPubSub:
         }
 
     def generate_subs(self, nr_subs, result, index, thread_num, timing):
+        """Generate a specified number of subscriptions in a separate thread"""
         start_time = time.time()
         subs = [{} for _ in range(nr_subs)]
 
@@ -143,11 +144,10 @@ class GeneratorPubSub:
                 field_schema = next((item for item in self.configs.schema if item['name'] == field), None)
                 if field_schema is None:
                     continue
-                # Generate value
                 value = self.generate_random_value(field_schema)
-                # Add to subscription
                 sub.append((field, operator, value))
-        # Randomize between 1 and 2 fields for processing criteria
+
+        # Window criteria
         num_fields = random.choice([1, 2])
         selected_fields = random.sample(
             [field for field in self.configs.schema if field['type'] in ['int', 'float']], num_fields
@@ -164,6 +164,7 @@ class GeneratorPubSub:
         return sub
 
     def generate_dataset(self, thread_num=1):
+        """Generate the dataset of publications and subscriptions"""
         start_time = time.time()
         sum_freqs = sum(self.configs.freq_fields.values())
 
@@ -230,6 +231,7 @@ class GeneratorPubSub:
         return pubs, subs, sum_freqs, start_time, end_time, timing
 
     def dump_data(self, pubs, subs, stats, dump_path):
+        """Dump the generated publications, subscriptions, and stats to JSON files"""
         with open(os.path.join(dump_path, "pubs.json"), "w", encoding="utf-8") as f:
             json.dump(pubs, f, indent=2)
 
@@ -240,6 +242,7 @@ class GeneratorPubSub:
             json.dump(stats, f, indent=2)
 
     def generate(self, iteration, thread_num):
+        """Generate the dataset for a specific iteration and thread number"""
         pubs, subs, sum_freqs, start_time, end_time, timing = self.generate_dataset(
             thread_num)
 
@@ -287,3 +290,4 @@ class GeneratorPubSub:
         dump_path = os.path.join(self.configs.results, str(iteration), str(thread_num))
         create_dir(dump_path)
         self.dump_data(pubs, subs, stats, dump_path)
+        return pubs, subs, stats

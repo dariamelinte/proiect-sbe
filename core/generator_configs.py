@@ -16,8 +16,8 @@ class Configs:
     def __init__(self, config_path):
         self.config_path: str = config_path
 
-        self.pubs: int = random.randint(1000, 1500)
-        self.subs: int = random.randint(1000, 1500)
+        self.pubs: int = 0
+        self.subs: int = 10000
 
         self.threads: List[int] = [1]
         self.results = 'results'
@@ -27,7 +27,6 @@ class Configs:
 
         self.freq_fields: Dict[Any] = {}
         self.freq_equality: Dict[Any] = {}
-        self.min_freq_eq_percentage: float = round(random.uniform(0, 1), 2)
 
         self.error = True
         self.get_configs_from_file()

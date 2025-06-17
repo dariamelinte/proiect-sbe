@@ -1,11 +1,10 @@
 import random
-import uuid
 import queue
 from queue import Queue
-from typing import Dict, Any, List, Callable
+from typing import Dict, Any, List
 import logging
 from datetime import datetime
-
+from dateutil import parser
 from .subscription import Subscription
 from .utils import log_event
 from .generator_pub_sub import GeneratorPubSub
@@ -14,7 +13,7 @@ import threading
 import time
 
 class Subscriber:
-    def __init__(self, subscriber_id: str, logger: logging.Logger = None, configs: Any = None):
+    def __init__(self, subscriber_id: str, logger: logging.Logger = None, configs: Any = None, pass_generation: bool = False):
         self.subscriber_id = subscriber_id
         self.subscriptions: Dict[str, Subscription] = {}
         self.logger = logger or logging.getLogger('pubsub_system')
@@ -25,34 +24,38 @@ class Subscriber:
         self.is_running = False
         self.sub_thread = None
         self.message_queue = Queue()
+        self.pass_generation = pass_generation  # Flag to control subscription generation
 
     def start(self):
+        """Start the subscriber thread"""
         self.is_running = True
         self.sub_thread = threading.Thread(target=self.run)
         self.sub_thread.start()
         print(f"{self.subscriber_id} started subscription loop")
 
     def stop(self):
+        """Stop the subscriber thread"""
         self.is_running = False
         if self.sub_thread:
             self.sub_thread.join()
         print(f"{self.subscriber_id} stopped")
 
-    def run(self):
+    def run(self, pass_generation = False):
+        """Run the subscriber thread to process messages and manage subscriptions"""
         print(f"{self.subscriber_id} thread started")
         while self.is_running:
             try:
                 # Try to get a message with timeout so thread stays responsive
                 message = self.message_queue.get(timeout=1)
-                self.process_message(message)  # You need to implement this to handle incoming publications
+                self.process_message(message)
             except queue.Empty:
-                # No message received, time to add subscriptions?
-                # Could add new subscriptions here every N seconds using a timer logic
-
+                # No message received, time to add subscriptions
+                if self.pass_generation:
+                    continue
                 current_time = time.time()
                 if not hasattr(self, "_last_sub_time"):
                     self._last_sub_time = 0
-                if current_time - self._last_sub_time > 60:
+                if int(current_time) - self._last_sub_time > 60:
                     simple_cond = generate_random_subscription(self.generator)
                     self.create_simple_subscription(simple_cond)
                     print(f"{self.subscriber_id} added new simple subscription")
@@ -106,26 +109,33 @@ class Subscriber:
         return subscription
 
     def receive_message(self, message: Dict[str, Any]):
-        receive_time = time.time()
-
-        # Transformă timestamp-ul din mesaj (ISO) în epoch
-        pub_timestamp_str = message.get('timestamp')
-        pub_timestamp = datetime.fromisoformat(pub_timestamp_str).timestamp() if pub_timestamp_str else receive_time
-
-        latency = receive_time - pub_timestamp
-        # Salvează latenta undeva, ex:
-        if not hasattr(self, 'latencies'):
-            self.latencies = []
-        self.latencies.append(latency)
-
+        """Receive a message and calculate latency"""
         self.received_messages.append(message)
-        log_event(self.logger, 'message_received', {
-            'subscriber_id': self.subscriber_id,
-            'message': message,
-            'latency': latency
-        })
+
+        try:
+            timestamp_str = message.get('timestamp')
+            latency_ms = None
+
+            if timestamp_str:
+                sent_time = parser.isoparse(timestamp_str)
+                # Get receive time as timezone-aware UTC
+                receive_time = datetime.now()
+
+                latency_ms = (receive_time - sent_time).total_seconds() * 1000
+                if latency_ms >= 0:
+                    self.latencies.append(latency_ms)
+
+            log_event(self.logger, 'message_received', {
+                'subscriber_id': self.subscriber_id,
+                'message_id': message.get('id', repr(message)),
+                'latency_ms': latency_ms
+            })
+
+        except Exception as e:
+            self.logger.error(f"Error calculating latency: {e}")
 
     def average_latency(self):
+        """Calculate the average latency of received messages"""
         if hasattr(self, 'latencies') and self.latencies:
             return sum(self.latencies) / len(self.latencies)
         return 0.0
@@ -137,6 +147,10 @@ class Subscriber:
     def clear_messages(self):
         """Clear received messages"""
         self.received_messages = []
+
+    def process_message(self, message):
+        pass
+
 
 def generate_random_subscription(generator: GeneratorPubSub):
     """Generate a random subscription using GeneratorPubSub"""

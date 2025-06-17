@@ -15,14 +15,18 @@ class Publisher:
         self.publication_queue = Queue()
         self.is_running = False
         self.publication_thread = None
+        self.threads = []
+        self.generated_publications = 0
 
-    def generate_publications_proto(self, batch_size=10):
+    def generate_publications_proto(self, batch_size=5):
+        """Generate multiple publications per iteration using GeneratorPubSub and add them to the queue"""
         while self.is_running:
             for _ in range(batch_size):
                 data = self.generator.generate_pub()
                 if data:
                     data['timestamp'] = datetime.now().isoformat()
                     # Construim mesajul Protobuf
+
                     pub_msg = pb.Publication(
                         station_id=data['station_id'],
                         city=data['city'],
@@ -39,20 +43,22 @@ class Publisher:
 
                     # Adăugăm bytes în coadă (transmiterea binară)
                     self.publication_queue.put(serialized_pub)
+                    self.generated_publications += 1
 
             time.sleep(0.1)
 
-    def generate_publications(self, batch_size=10):
+    def generate_publications(self, batch_size=20):
         """Generate multiple publications per iteration using GeneratorPubSub and add them to the queue"""
         while self.is_running:
             for _ in range(batch_size):
                 publication = self.generator.generate_pub()
                 if publication:
-                    publication['timestamp'] = datetime.now().isoformat()
+                    from datetime import datetime, timezone
+                    publication['timestamp'] = datetime.now()
                     self.publication_queue.put(publication)
-            time.sleep(0.01)  # Small delay to control generation rate
 
-    def start(self, num_threads=8):
+    def start(self, num_threads=4):
+        """Start the publisher with multiple threads generating publications"""
         self.is_running = True
         self.threads = []
         for _ in range(num_threads):
@@ -62,6 +68,7 @@ class Publisher:
         print(f"Publisher started with {num_threads} threads")
 
     def stop(self):
+        """Stop the publisher and wait for threads to finish"""
         self.is_running = False
         for t in self.threads:
             t.join()

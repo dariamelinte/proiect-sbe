@@ -17,7 +17,7 @@ class Subscription:
 
     def matches(self, publication) -> bool:
         """Check if a publication matches the subscription conditions"""
-        print(f"Checking publication against subscription {self.id} with conditions: {self.conditions.__repr__()}")
+        # print(f"Checking publication against subscription {self.id} with conditions: {self.conditions.__repr__()}")
         for field, operator, value in self.conditions:
             if field not in publication:
                 return False

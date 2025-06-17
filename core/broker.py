@@ -22,7 +22,6 @@ class Broker:
         self.sent_to_subscribers = 0
         self.matching_attempts = 0
         self.matches_found = 0
-        self.latencies = []  # Store latencies for average calculation
 
     def add_subscription(self, subscription: Subscription) -> str:
         """Add a new subscription and return its ID"""
@@ -55,53 +54,38 @@ class Broker:
                 })
 
     def process_publication(self, publication: Dict[str, Any]):
+        """Process a publication and notify subscribers if conditions match"""
         with self.lock:
             self.received_publications += 1
-
-            latency_ms = None
-            if 'timestamp' in publication:
-                try:
-                    sent_time = datetime.fromisoformat(publication['timestamp'])
-                    now = datetime.now()
-                    latency = (now - sent_time).total_seconds() * 1000  # ms
-                    if latency < 0:
-                        # Poate timestamp-ul e din viitor, ignorăm
-                        latency = None
-                    else:
-                        self.latencies.append(latency)
-                        latency_ms = latency
-                except Exception as e:
-                    self.logger.warning(f"Failed to parse timestamp: {e}")
 
             log_event(self.logger, 'publication_received', {
                 'broker_id': self.broker_id,
                 'publication': publication,
-                'latency_ms': latency_ms
             })
 
             notified_subscribers = set()
 
             for sub_id, subscription in self.subscriptions.items():
-                if subscription.subscriber_id in notified_subscribers:
-                    continue
-
                 self.matching_attempts += 1
 
+                matched = False
                 if subscription.window_size is None:
-                    if subscription.matches(publication):
-                        self.matches_found += 1
-                        self.sent_to_subscribers += 1
-                        subscription.subscriber.receive_message(publication)
-                        notified_subscribers.add(subscription.subscriber_id)
+                    matched = subscription.matches(publication)
                 else:
                     matched = self._process_window_subscription(sub_id, subscription, publication)
-                    if matched:
+
+                if matched:
+                    self.matches_found += 1
+
+                    # Only notify subscriber once, even if multiple subs match
+                    if subscription.subscriber_id not in notified_subscribers:
+                        subscription.subscriber.receive_message(publication)
                         self.sent_to_subscribers += 1
                         notified_subscribers.add(subscription.subscriber_id)
 
     def _process_window_subscription(self, sub_id, subscription, publication):
+        """Process a window-based subscription"""
         subscription.window_buffer.append(publication)
-
         log_event(self.logger, 'window_buffer_updated', {
             'broker_id': self.broker_id,
             'subscription_id': sub_id,
@@ -128,10 +112,12 @@ class Broker:
         return False
 
     def _process_simple_subscription(self, sub_id, subscription, publication):
+        """Process a simple subscription"""
         if subscription.matches(publication):
             self.notify_subscriber(sub_id, publication)
 
     def notify_subscriber(self, subscription_id: str, publication: Dict[str, Any]):
+        """Notify the subscriber of a matched publication"""
         subscription = self.subscriptions.get(subscription_id)
         if subscription and subscription.subscriber:
             subscription.subscriber.receive_message(publication)
@@ -176,12 +162,8 @@ class Broker:
             except:
                 continue
 
-    def get_average_latency(self):
-        if hasattr(self, 'latencies') and self.latencies:
-            return sum(self.latencies) / len(self.latencies)
-        return 0
-
     def get_stats(self):
+        """Get statistics about the broker's operations"""
         return {
             "broker_id": self.broker_id,
             "received_publications": self.received_publications,
@@ -191,6 +173,7 @@ class Broker:
         }
 
     def _process_loop_proto(self):
+        """Main processing loop for publications using Protobuf serialization"""
         while self.is_running:
             try:
                 serialized_pub = self.publication_queue.get(timeout=1)
