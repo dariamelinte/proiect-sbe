@@ -48,10 +48,13 @@ class BrokerNetwork:
         return subscription_id
 
     def publish(self, publication: Dict[str, Any]):
-        """Publish a message to a broker using round-robin distribution"""
-        broker = self.brokers[self.current_broker_index]
-        self.current_broker_index = (self.current_broker_index + 1) % len(self.brokers)
-        broker.publication_queue.put(publication)
+        """Broadcast a message to all brokers"""
+        for broker in self.brokers:
+            broker.publication_queue.put(publication)
+        log_event(self.logger, 'publication_broadcasted', {
+            'publication': publication,
+            'num_brokers': len(self.brokers)
+        })
 
     def get_all_broker_stats(self):
         """Get statistics from all brokers in the network"""
