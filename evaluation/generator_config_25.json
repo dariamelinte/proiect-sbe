@@ -74,7 +74,7 @@
       "wind": 0.09,
       "rain": 0.83
     },
-    "freq_eq": {
+    "freq_equality": {
       "rain": 0.25
     }
 }

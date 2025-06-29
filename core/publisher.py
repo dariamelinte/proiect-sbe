@@ -7,6 +7,8 @@ from core.proto import publication_pb2 as pb
 
 from .generator_pub_sub import GeneratorPubSub
 from .generator_configs import Configs
+from .utils import log_event
+
 
 class Publisher:
     def __init__(self, configs: Configs):
@@ -24,8 +26,8 @@ class Publisher:
             for _ in range(batch_size):
                 data = self.generator.generate_pub()
                 if data:
-                    data['timestamp'] = datetime.now().isoformat()
-                    # Construim mesajul Protobuf
+                    from datetime import datetime, timezone
+                    data['timestamp'] = datetime.now(timezone.utc).isoformat()
 
                     pub_msg = pb.Publication(
                         station_id=data['station_id'],
@@ -65,14 +67,20 @@ class Publisher:
             t = threading.Thread(target=self.generate_publications_proto)
             t.start()
             self.threads.append(t)
-        print(f"Publisher started with {num_threads} threads")
+        log_event(self.configs.logger, 'publisher_started', {
+            'message': 'Publisher started',
+            'num_threads': num_threads
+        })
 
     def stop(self):
         """Stop the publisher and wait for threads to finish"""
         self.is_running = False
         for t in self.threads:
             t.join()
-        print("Publisher stopped")
+        log_event(self.configs.logger, 'publisher_stopped', {
+            'message': 'Publisher stopped',
+            'generated_publications': self.generated_publications
+        })
 
     def get_publication(self) -> Dict[str, Any]:
         """Get the next publication from the queue"""

@@ -62,37 +62,41 @@ class GeneratorPubSub:
         }
 
     def generate_subs(self, nr_subs, result, index, thread_num, timing):
-        """Generate a specified number of subscriptions in a separate thread"""
+        from math import ceil
         start_time = time.time()
         subs = [{} for _ in range(nr_subs)]
 
+        total_subs = nr_subs * thread_num
+        global_offset = index * nr_subs  # ca să știm unde suntem în totalitate
+
         for field, freq in self.configs.freq_fields.items():
-            nr_field = int(nr_subs * freq)
+            # nr exact de subscripții pentru câmpul ăsta la nivel global
+            total_field_subs = int(round(total_subs * freq))
 
-            fractional_part = nr_subs * freq - nr_field
-            number_threads = int(fractional_part * thread_num)
+            # distribuim câte `per_thread_count` către fiecare thread
+            base = total_field_subs // thread_num
+            remainder = total_field_subs % thread_num
+            nr_field = base + (1 if index < remainder else 0)
 
-            if number_threads > 0:
-                if index < number_threads:
-                    nr_field += 1
             for i in range(nr_field):
+                # stabilim operatorul
                 if field in self.configs.freq_equality:
-                    nr_equality = int(
-                        ceil(nr_field * self.configs.freq_equality[field]))
-                    if i < nr_equality:
+                    eq_ratio = self.configs.freq_equality[field]
+                    eq_limit = int(round(nr_field * eq_ratio))
+                    if i < eq_limit:
                         operator = "="
                     else:
-                        not_eq_ops = [op for op in self.operators if op != "="]
-                        operator_index = i % len(not_eq_ops)
-                        operator = not_eq_ops[operator_index]
+                        operator = random.choice([op for op in self.operators if op != "="])
                 else:
-                    operator_index = i % len(self.operators)
-                    operator = self.operators[operator_index]
+                    operator = random.choice(self.operators)
 
-                valoare = self.generate_random_value(
-                    next((item for item in self.configs.schema if item['name'] == field), None))
-                target_idx = min(range(nr_subs), key=lambda j: len(subs[j]))
-                subs[target_idx][field] = (operator, valoare)
+                # generăm valoare
+                field_schema = next((f for f in self.configs.schema if f['name'] == field), None)
+                value = self.generate_random_value(field_schema)
+
+                # distribuim în subscripții ciclic și determinist
+                target_idx = (i + global_offset) % nr_subs
+                subs[target_idx][field] = (operator, value)
 
         result[index] = subs
         end_time = time.time()
@@ -105,7 +109,6 @@ class GeneratorPubSub:
     def generate_single_sub(self) -> list[tuple]:
         """Generate a single subscription list of tuples without threading"""
         sub = []
-        print("Generating single subscription...")
         for field, freq in self.configs.freq_fields.items():
             if random.random() <= freq:
                 # Determine operator
@@ -129,7 +132,6 @@ class GeneratorPubSub:
     def generate_single_window_sub(self) -> list[tuple]:
         """Generate a single window-based subscription with random processing criteria and dynamic field selection"""
         sub = []
-        print("Generating single window subscription...")
         for field, freq in self.configs.freq_fields.items():
             if random.random() <= freq:
                 # Determine operator
@@ -160,7 +162,6 @@ class GeneratorPubSub:
             value = self.generate_random_value(field)
             # Add to subscription
             sub.append((dynamic_field_name, operator, value))
-        print(f"Generated window subscription with {len(sub)} conditions {sub}")
         return sub
 
     def generate_dataset(self, thread_num=1):

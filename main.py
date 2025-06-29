@@ -64,12 +64,12 @@ def main():
     logger = setup_logging()
 
     # Initialize configurations
-    configs = Configs(config_path='generator_configs.json')
-    print(f"Configurations loaded: {configs.__dict__}")
-
+    configs = Configs(config_path='generator_configs.json', logger=logger)
     # Create broker network
     broker_network = BrokerNetwork(num_brokers=3, window_size=10, logger=logger)
+    broker_network.print_topology()
     broker_network.start()
+
 
     # Create publisher with configurations
     publisher = Publisher(configs)
@@ -77,25 +77,20 @@ def main():
 
     # Create 3 subscribers
     subscribers = [
-        Subscriber(f"subscriber_{i}", logger,configs) for i in range(3)
+        Subscriber(f"subscriber_{i}", logger,configs,flag_generate_window=True) for i in range(3)
     ]
 
     for subscriber in subscribers:
         subscriber.start()
 
-    event = threading.Event()
     for subscriber in subscribers:
-        for _ in range(2):
+        for _ in range(5):
             subscription_data = generate_random_subscription(subscriber.generator)
             subscription = subscriber.create_simple_subscription(subscription_data)
             broker_network.add_subscription(subscription)
-            print(f"Created subscription data: {subscription_data}")
         subscription_data = generate_random_window_subscription(subscriber.generator)
         subscription = subscriber.create_window_subscription(subscription_data)
         broker_network.add_subscription(subscription)
-        print(f"\nCreated window subscription for {subscriber.subscriber_id}:")
-    event.set()  # Signal that the operation is complete
-    event.wait()  # Wait until the event is set
 
     try:
         # Generate and publish messages for 30 seconds
@@ -104,7 +99,7 @@ def main():
             if not publisher.publication_queue.empty():
                 publication = publisher.get_publication()
                 broker_network.publish(publication)
-            time.sleep(0.01)
+            time.sleep(0.1)
 
     finally:
         # Print received messages for each subscriber
@@ -114,6 +109,12 @@ def main():
         # In finally block:
         for subscriber in subscribers:
             subscriber.stop()
+
+        # Log routing tables and statistics
+        for broker in broker_network.brokers:
+            broker.log_routing_table()
+            stats = broker.get_stats()
+            logger.info(f"Broker {broker.broker_id} stats: {stats}")
 
         # Stop the broker network
         broker_network.stop()

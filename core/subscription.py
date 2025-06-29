@@ -10,10 +10,17 @@ class Subscription:
         self.window_buffer = []
         self.id = str(uuid.uuid4())
         self.subscriber = subscriber  # Reference to subscriber
+        self.total_checked = 0
+        self.matched = 0
 
     @property
     def subscriber_id(self):
         return self.subscriber.subscriber_id if self.subscriber else None
+
+    def get_match_rate(self):
+        if self.total_checked == 0:
+            return 0.0
+        return self.matched / self.total_checked
 
     def matches(self, publication) -> bool:
         """Check if a publication matches the subscription conditions"""

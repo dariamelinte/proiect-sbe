@@ -24,7 +24,7 @@ def run_experiment(config_path: str, label: str):
     """Run the experiment with the given configuration path and label."""
     logger = setup_logging()
     print(f"\nRunning experiment with config: {label} ({config_path})")
-    configs = Configs(config_path=config_path)
+    configs = Configs(config_path=config_path, logger=logger)
 
     # Initialize GeneratorPubSub
     generator = GeneratorPubSub(configs)
@@ -69,7 +69,7 @@ def run_experiment(config_path: str, label: str):
     publisher.start()
 
     start_time = time.time()
-    run_duration = 180  # 3 minutes
+    run_duration = 10  # Run for 30 seconds
 
     try:
         while time.time() - start_time < run_duration:
@@ -77,7 +77,7 @@ def run_experiment(config_path: str, label: str):
                 publication = publisher.get_publication()
                 broker_network.publish(publication)
                 delivered_messages += 1
-            time.sleep(0.001)
+            time.sleep(0.01)
 
     finally:
         # Stop everything cleanly
@@ -119,7 +119,15 @@ def run_experiment(config_path: str, label: str):
         timestamp = datetime.now().isoformat()
         for stat in broker_stats:
             stat["timestamp"] = timestamp
+            stat["average_latency_ms"] = avg_latency_ms
             writer.writerow(stat)
+
+    log_event(logger, 'system_match_rate', {
+        'config_label': label,
+        'total_matches': total_matches,
+        'total_attempts': total_attempts,
+        'match_rate_percent': round(match_rate, 2)
+    })
 
     print(f"Broker stats saved to {broker_csv_file}")
 
@@ -129,6 +137,7 @@ def run_experiment(config_path: str, label: str):
         "avg_latency_ms": avg_latency_ms,
         "match_rate_percent": match_rate,
     }
+
 
 def write_summary_csv(results, filename="evaluation_summary.csv"):
     fieldnames = ["config_label", "delivered_messages", "avg_latency_ms", "match_rate_percent", "timestamp"]
@@ -161,6 +170,7 @@ def main():
         print(f"Average latency (ms): {result['avg_latency_ms']:.2f}")
         print(f"Match rate (%): {result['match_rate_percent']:.2f}")
         all_results.append(result)
+        time.sleep(60)
 
     write_summary_csv(all_results)
 

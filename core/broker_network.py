@@ -12,6 +12,10 @@ from .utils import log_event
 class BrokerNetwork:
     def __init__(self, num_brokers: int = 3, window_size: int = 10, logger: logging.Logger = None):
         self.brokers = [Broker(f"broker_{i}", window_size, logger) for i in range(num_brokers)]
+        # Create a chain of brokers
+        for i in range(len(self.brokers) - 1):
+            self.brokers[i].neighbor_brokers.append(self.brokers[i + 1])
+            self.brokers[i + 1].neighbor_brokers.append(self.brokers[i])
         self.current_broker_index = 0
         self.logger = logger or logging.getLogger('pubsub_system')
         log_event(self.logger, 'broker_network_created', {
@@ -36,10 +40,11 @@ class BrokerNetwork:
             broker.stop()
 
     def add_subscription(self, subscription: Subscription) -> str:
-        """Add a subscription to a broker using round-robin distribution"""
         broker = self.brokers[self.current_broker_index]
         self.current_broker_index = (self.current_broker_index + 1) % len(self.brokers)
         subscription_id = broker.add_subscription(subscription)
+        # Administer the subscription to the broker
+        broker.administer(broker.broker_id, subscription)
         log_event(self.logger, 'subscription_distributed', {
             'broker_id': broker.broker_id,
             'subscription_id': subscription_id,
@@ -48,13 +53,10 @@ class BrokerNetwork:
         return subscription_id
 
     def publish(self, publication: Dict[str, Any]):
-        """Broadcast a message to all brokers"""
-        for broker in self.brokers:
-            broker.publication_queue.put(publication)
-        log_event(self.logger, 'publication_broadcasted', {
-            'publication': publication,
-            'num_brokers': len(self.brokers)
-        })
+        """Publish a publication to the broker network"""
+        if self.brokers:
+            root_broker = self.brokers[0]
+            root_broker.route_publication(publication, visited=set())
 
     def get_all_broker_stats(self):
         """Get statistics from all brokers in the network"""
@@ -63,3 +65,9 @@ class BrokerNetwork:
             stat = broker.get_stats()
             stats.append(stat)
         return stats
+
+    def print_topology(self):
+        print("\n Broker Network Topology:")
+        for broker in self.brokers:
+            neighbor_ids = [n.broker_id for n in broker.neighbor_brokers]
+            print(f"  {broker.broker_id} ↔ {neighbor_ids}")

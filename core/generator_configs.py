@@ -13,9 +13,9 @@ from .utils import (
 
 
 class Configs:
-    def __init__(self, config_path):
+    def __init__(self, config_path, logger = None):
         self.config_path: str = config_path
-
+        self.logger = logger
         self.pubs: int = 0
         self.subs: int = 10000
 
@@ -54,5 +54,9 @@ class Configs:
                     self.freq_fields = generate_field_freq(self.fields)
                 create_dir(self.results)
         except Exception as e:
-            print(f"[ERROR] {e}\n\n{traceback.format_exc()}")
-            self.error = True
+            if self.logger:
+                self.logger.error(f"Error loading configurations from {self.config_path}: {e}")
+                self.logger.error(traceback.format_exc())
+            else:
+                print(f"Error loading configurations from {self.config_path}: {e}")
+                print(traceback.format_exc())
