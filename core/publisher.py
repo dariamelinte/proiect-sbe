@@ -1,79 +1,63 @@
-import time
 import threading
+import time
+import json
+import uuid
 from typing import Dict, Any
-from queue import Queue
-from datetime import datetime
-from core.proto import publication_pb2 as pb
+import redis
 
-from .generator_pub_sub import GeneratorPubSub
 from .generator_configs import Configs
+from .generator_pub_sub import GeneratorPubSub
+
 
 class Publisher:
-    def __init__(self, configs: Configs):
+    """
+    The Publisher generates publications and pushes them to a central Redis queue.
+    """
+    def __init__(self, configs: Configs, redis_client: redis.Redis):
         self.configs = configs
-        self.generator = GeneratorPubSub(configs)
-        self.publication_queue = Queue()
+        self.redis_client = redis_client
+        self.publication_queue_name = 'publications_queue'
         self.is_running = False
-        self.publication_thread = None
-        self.threads = []
-        self.generated_publications = 0
+        self.thread = None
+        # The publisher creates its own generator instance
+        self.generator = GeneratorPubSub(configs)
 
-    def generate_publications_proto(self, batch_size=5):
-        """Generate multiple publications per iteration using GeneratorPubSub and add them to the queue"""
+    def _generate_publications_loop(self):
+        """
+        Continuously generates publications and pushes them to the Redis queue.
+        """
         while self.is_running:
-            for _ in range(batch_size):
-                data = self.generator.generate_pub()
-                if data:
-                    data['timestamp'] = datetime.now().isoformat()
-                    # Construim mesajul Protobuf
+            publication_data = self.generator.generate_pub()
+            if not publication_data:
+                continue
 
-                    pub_msg = pb.Publication(
-                        station_id=data['station_id'],
-                        city=data['city'],
-                        direction=data['direction'],
-                        temperature=data['temperature'],
-                        rain=data['rain'],
-                        wind=data['wind'],
-                        created_at=data['created_at'],
-                        timestamp=data['timestamp'],
-                    )
-
-                    # Serializăm mesajul într-un bytes
-                    serialized_pub = pub_msg.SerializeToString()
-
-                    # Adăugăm bytes în coadă (transmiterea binară)
-                    self.publication_queue.put(serialized_pub)
-                    self.generated_publications += 1
-
+            publication_data['id'] = str(uuid.uuid4())
+            publication_data['timestamp'] = time.time()
+            
+            self.redis_client.lpush(self.publication_queue_name, json.dumps(publication_data))
+            
+            # Use a fixed interval for publishing
             time.sleep(0.1)
 
-    def generate_publications(self, batch_size=20):
-        """Generate multiple publications per iteration using GeneratorPubSub and add them to the queue"""
-        while self.is_running:
-            for _ in range(batch_size):
-                publication = self.generator.generate_pub()
-                if publication:
-                    from datetime import datetime, timezone
-                    publication['timestamp'] = datetime.now()
-                    self.publication_queue.put(publication)
-
-    def start(self, num_threads=4):
-        """Start the publisher with multiple threads generating publications"""
+    def start(self):
+        """
+        Starts the publisher in a background thread.
+        """
+        if self.is_running:
+            print("Publisher is already running.")
+            return
+            
         self.is_running = True
-        self.threads = []
-        for _ in range(num_threads):
-            t = threading.Thread(target=self.generate_publications_proto)
-            t.start()
-            self.threads.append(t)
-        print(f"Publisher started with {num_threads} threads")
+        self.thread = threading.Thread(target=self._generate_publications_loop)
+        self.thread.start()
+        print("Publisher started and is pushing to Redis.")
 
     def stop(self):
-        """Stop the publisher and wait for threads to finish"""
-        self.is_running = False
-        for t in self.threads:
-            t.join()
-        print("Publisher stopped")
-
-    def get_publication(self) -> Dict[str, Any]:
-        """Get the next publication from the queue"""
-        return self.publication_queue.get()
+        """
+        Stops the publisher and waits for its thread to finish.
+        """
+        if self.is_running:
+            self.is_running = False
+            if self.thread:
+                self.thread.join()
+            print("Publisher stopped.")

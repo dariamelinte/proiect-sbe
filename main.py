@@ -1,11 +1,12 @@
 import time
 import json
+import redis
 from core.publisher import Publisher
 from core.broker_network import BrokerNetwork
 from core.generator_configs import Configs
 from core.subscription import Subscription
 from core.subscriber import Subscriber, generate_random_subscription, generate_random_window_subscription
-from core.utils import setup_logging
+from core.utils import setup_logging, log_event
 import threading
 
 def save_subscriber_messages(subscriber: Subscriber, filename: str):
@@ -63,16 +64,21 @@ def main():
     # Setup logging
     logger = setup_logging()
 
+    # Initialize Redis client
+    redis_client = redis.Redis(decode_responses=True)
+    # Clear any previous run data
+    redis_client.flushdb()
+
     # Initialize configurations
     configs = Configs(config_path='generator_configs.json')
     print(f"Configurations loaded: {configs.__dict__}")
 
-    # Create broker network
-    broker_network = BrokerNetwork(num_brokers=3, window_size=10, logger=logger)
+    # Create broker network, pass redis client
+    broker_network = BrokerNetwork(num_brokers=3, window_size=10, logger=logger, redis_client=redis_client)
     broker_network.start()
 
-    # Create publisher with configurations
-    publisher = Publisher(configs)
+    # Create publisher with configurations and redis client
+    publisher = Publisher(configs, redis_client)
     publisher.start()
 
     # Create 3 subscribers
@@ -98,13 +104,27 @@ def main():
     event.wait()  # Wait until the event is set
 
     try:
-        # Generate and publish messages for 30 seconds
-        start_time = time.time()
-        while time.time() - start_time < 60:
-            if not publisher.publication_queue.empty():
-                publication = publisher.get_publication()
-                broker_network.publish(publication)
-            time.sleep(0.01)
+        # Run for a bit
+        print("Initial run for 20 seconds...")
+        time.sleep(20)
+
+        # --- SIMULATE A BROKER CRASH ---
+        target_broker_id = 'broker_1'
+        if target_broker_id in broker_network.brokers:
+            print(f"\n--- SIMULATING CRASH for {target_broker_id} ---")
+            broker_to_crash = broker_network.brokers[target_broker_id]
+            
+            # Send a "poison pill" to crash the broker's processing thread
+            broker_to_crash.publication_queue.put({'__crash__': True})
+
+            log_event(logger, 'manual_crash_simulation_sent', {'broker_id': target_broker_id})
+            print(f"--- Crash signal sent to {target_broker_id} ---\n")
+
+        # Allow time for health checker to detect and restart
+        print("Running for another 20 seconds to allow for recovery...")
+        time.sleep(20)
+        
+        print("Simulation finished.")
 
     finally:
         # Print received messages for each subscriber
@@ -118,6 +138,7 @@ def main():
         # Stop the broker network
         broker_network.stop()
         publisher.stop()
+        print("System stopped.")
 
 if __name__ == "__main__":
     main()

@@ -15,6 +15,36 @@ class Subscription:
     def subscriber_id(self):
         return self.subscriber.subscriber_id if self.subscriber else None
 
+    def to_dict(self):
+        """Serializes the subscription to a dictionary."""
+        # Lambdas cannot be serialized directly to JSON.
+        # We will store a representation of the conditions.
+        # NOTE: This simplification means we can't recover the exact lambda function,
+        # but we can recover the structure, which is often sufficient for many use cases.
+        # For a full recovery, a more complex serialization strategy is needed.
+        return {
+            'id': self.id,
+            'conditions': self.conditions,  # This will be a list of tuples
+            'window_size': self.window_size,
+            'subscriber_id': self.subscriber_id
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict, subscriber_map: Dict):
+        """Deserializes a subscription from a dictionary."""
+        subscriber = subscriber_map.get(data.get('subscriber_id'))
+        
+        # This is a simplified reconstruction. The original lambda logic is lost.
+        # In a real-world scenario, you might have a factory that reconstructs
+        # functions based on the stored operator and value.
+        sub = cls(
+            conditions=data['conditions'],
+            window_size=data.get('window_size'),
+            subscriber=subscriber
+        )
+        sub.id = data['id']
+        return sub
+
     def matches(self, publication) -> bool:
         """Check if a publication matches the subscription conditions"""
         # print(f"Checking publication against subscription {self.id} with conditions: {self.conditions.__repr__()}")

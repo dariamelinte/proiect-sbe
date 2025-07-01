@@ -1,0 +1,133 @@
+onfigurations loaded: {'config_path': 'generator_configs.json', 'pubs': 0, 'subs': 10000, 'threads': [1, 2, 3, 4, 5, 6], 'results': 'results', 'schema': [{'name': 'station_id', 'type': 'int', 'min': 1, 'max': 300}, {'name': 'city', 'type': 'string', 'choices': ['Bucharest', 'Cluj', 'Iasi', 'Timisoara', 'Constanta', 'Brasov', 'Sibiu', 'Oradea']}, {'name': 'direction', 'type': 'string', 'choices': ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']}, {'name': 'temperature', 'type': 'float', 'min': -10.0, 'max': 40.0}, {'name': 'rain', 'type': 'float', 'min': 0, 'max': 1}, {'name': 'wind', 'type': 'float', 'min': 0, 'max': 100}, {'name': 'created_at', 'type': 'date', 'min': '2020-01-01', 'max': '2025-12-31', 'format': '%Y-%m-%d'}], 'fields': ['station_id', 'city', 'direction', 'temperature', 'rain', 'wind', 'created_at'], 'freq_fields': {'temperature': 0.07, 'created_at': 0.8, 'wind': 0.09, 'rain': 0.83}, 'freq_equality': {}, 'error': False}
+2025-07-01 10:53:46,730 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.730214", "type": "broker_network_created", "data": {"num_brokers": 3, "window_size": 10}}
+2025-07-01 10:53:46,730 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.730705", "type": "broker_network_starting", "data": {"num_brokers": 0}}
+2025-07-01 10:53:46,730 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.730827", "type": "broker_starting", "data": {"broker_id": "broker_0"}}
+2025-07-01 10:53:46,730 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.730966", "type": "broker_recovering_state", "data": {"broker_id": "broker_0"}}
+Broker broker_0 starting recovery...
+Broker broker_0 recovery complete. Found 0 subscriptions and 0 unprocessed publications.
+No subscriptions recovered for broker_0.
+2025-07-01 10:53:46,733 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.733460", "type": "broker_started", "data": {"broker_id": "broker_0"}}
+2025-07-01 10:53:46,733 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.733652", "type": "broker_starting", "data": {"broker_id": "broker_1"}}
+2025-07-01 10:53:46,733 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.733772", "type": "broker_recovering_state", "data": {"broker_id": "broker_1"}}
+Broker broker_1 starting recovery...
+Broker broker_1 recovery complete. Found 0 subscriptions and 0 unprocessed publications.
+No subscriptions recovered for broker_1.
+2025-07-01 10:53:46,734 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.734584", "type": "broker_started", "data": {"broker_id": "broker_1"}}
+2025-07-01 10:53:46,734 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.734761", "type": "broker_starting", "data": {"broker_id": "broker_2"}}
+2025-07-01 10:53:46,734 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.734887", "type": "broker_recovering_state", "data": {"broker_id": "broker_2"}}
+Broker broker_2 starting recovery...
+Broker broker_2 recovery complete. Found 0 subscriptions and 0 unprocessed publications.
+No subscriptions recovered for broker_2.
+2025-07-01 10:53:46,735 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.735694", "type": "broker_started", "data": {"broker_id": "broker_2"}}
+BrokerNetwork health checker started.
+Publisher started and is pushing to Redis.
+subscriber_0 thread started
+subscriber_0 started subscription loop
+subscriber_1 thread started
+subscriber_1 started subscription loop
+subscriber_2 thread started
+subscriber_2 started subscription loop
+Generating single subscription...
+2025-07-01 10:53:46,740 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.740281", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_0", "subscription_id": "6571b97d-40ac-4f3b-b4e0-a369a45c9b23", "conditions": [{"field": "temperature", "operator": "!=", "value": "33.25"}, {"field": "created_at", "operator": "=", "value": "2024-09-01"}, {"field": "wind", "operator": "<=", "value": "1.95"}, {"field": "rain", "operator": "<", "value": "0.56"}]}}
+2025-07-01 10:53:46,744 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.744130", "type": "subscription_added", "data": {"broker_id": "broker_0", "subscription_id": "6571b97d-40ac-4f3b-b4e0-a369a45c9b23"}}
+2025-07-01 10:53:46,744 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.744333", "type": "subscription_distributed", "data": {"broker_id": "broker_0", "subscription_id": "6571b97d-40ac-4f3b-b4e0-a369a45c9b23"}}
+Created subscription data: [('temperature', '!=', 33.25), ('created_at', '=', '2024-09-01'), ('wind', '<=', 1.95), ('rain', '<', 0.56)]
+Generating single subscription...
+2025-07-01 10:53:46,744 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.744650", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_0", "subscription_id": "232fb2de-c715-44d7-876b-36641b948698", "conditions": [{"field": "rain", "operator": "!=", "value": "0.21"}]}}
+2025-07-01 10:53:46,745 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.745319", "type": "subscription_added", "data": {"broker_id": "broker_1", "subscription_id": "232fb2de-c715-44d7-876b-36641b948698"}}
+2025-07-01 10:53:46,745 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.745496", "type": "subscription_distributed", "data": {"broker_id": "broker_1", "subscription_id": "232fb2de-c715-44d7-876b-36641b948698"}}
+Created subscription data: [('rain', '!=', 0.21)]
+Generating single window subscription...
+Generated window subscription with 3 conditions [('rain', '=', 0.27), ('avg_wind', '=', 12.71), ('max_rain', '<=', 1.0)]
+2025-07-01 10:53:46,745 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.745908", "type": "window_subscription_created", "data": {"subscriber_id": "subscriber_0", "subscription_id": "5fe6a57f-b977-4f80-8b59-29e48bde0d54", "conditions": [{"field": "rain", "operator": "=", "value": "0.27"}, {"field": "avg_wind", "operator": "=", "value": "12.71"}, {"field": "max_rain", "operator": "<=", "value": "1.0"}]}}
+2025-07-01 10:53:46,746 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.746664", "type": "subscription_added", "data": {"broker_id": "broker_2", "subscription_id": "5fe6a57f-b977-4f80-8b59-29e48bde0d54"}}
+2025-07-01 10:53:46,746 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.746847", "type": "subscription_distributed", "data": {"broker_id": "broker_2", "subscription_id": "5fe6a57f-b977-4f80-8b59-29e48bde0d54"}}
+
+Created window subscription for subscriber_0:
+Generating single subscription...
+2025-07-01 10:53:46,747 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.747214", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_1", "subscription_id": "c88c4330-4451-49d0-b51b-2bffa96dda37", "conditions": [{"field": "created_at", "operator": "<", "value": "2020-01-22"}, {"field": "rain", "operator": ">", "value": "0.13"}]}}
+2025-07-01 10:53:46,749 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.749010", "type": "subscription_added", "data": {"broker_id": "broker_0", "subscription_id": "c88c4330-4451-49d0-b51b-2bffa96dda37"}}
+2025-07-01 10:53:46,749 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.749204", "type": "subscription_distributed", "data": {"broker_id": "broker_0", "subscription_id": "c88c4330-4451-49d0-b51b-2bffa96dda37"}}
+Created subscription data: [('created_at', '<', '2020-01-22'), ('rain', '>', 0.13)]
+Generating single subscription...
+2025-07-01 10:53:46,749 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.749501", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_1", "subscription_id": "e8f28e50-572b-4b96-b750-0794d65654b0", "conditions": [{"field": "created_at", "operator": "!=", "value": "2025-08-31"}]}}
+2025-07-01 10:53:46,751 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.751263", "type": "subscription_added", "data": {"broker_id": "broker_1", "subscription_id": "e8f28e50-572b-4b96-b750-0794d65654b0"}}
+2025-07-01 10:53:46,751 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.751627", "type": "subscription_distributed", "data": {"broker_id": "broker_1", "subscription_id": "e8f28e50-572b-4b96-b750-0794d65654b0"}}
+Created subscription data: [('created_at', '!=', '2025-08-31')]
+Generating single window subscription...
+Generated window subscription with 4 conditions [('created_at', '!=', '2021-06-27'), ('rain', '<=', 0.94), ('avg_wind', '>=', 11.72), ('min_rain', '!=', 0.28)]
+2025-07-01 10:53:46,752 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.752217", "type": "window_subscription_created", "data": {"subscriber_id": "subscriber_1", "subscription_id": "2633ebd5-46cb-4c68-95cb-a0ab32c352ee", "conditions": [{"field": "created_at", "operator": "!=", "value": "2021-06-27"}, {"field": "rain", "operator": "<=", "value": "0.94"}, {"field": "avg_wind", "operator": ">=", "value": "11.72"}, {"field": "min_rain", "operator": "!=", "value": "0.28"}]}}
+2025-07-01 10:53:46,753 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.753250", "type": "subscription_added", "data": {"broker_id": "broker_2", "subscription_id": "2633ebd5-46cb-4c68-95cb-a0ab32c352ee"}}
+2025-07-01 10:53:46,753 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.753561", "type": "subscription_distributed", "data": {"broker_id": "broker_2", "subscription_id": "2633ebd5-46cb-4c68-95cb-a0ab32c352ee"}}
+
+Created window subscription for subscriber_1:
+Generating single subscription...
+2025-07-01 10:53:46,754 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.754029", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_2", "subscription_id": "f1b4bf85-696f-478f-8deb-6dfef096677c", "conditions": [{"field": "created_at", "operator": "=", "value": "2022-03-09"}, {"field": "rain", "operator": "=", "value": "0.67"}]}}
+2025-07-01 10:53:46,755 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.755004", "type": "subscription_added", "data": {"broker_id": "broker_0", "subscription_id": "f1b4bf85-696f-478f-8deb-6dfef096677c"}}
+2025-07-01 10:53:46,755 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.755253", "type": "subscription_distributed", "data": {"broker_id": "broker_0", "subscription_id": "f1b4bf85-696f-478f-8deb-6dfef096677c"}}
+Created subscription data: [('created_at', '=', '2022-03-09'), ('rain', '=', 0.67)]
+Generating single subscription...
+2025-07-01 10:53:46,755 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.755732", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_2", "subscription_id": "770a5e6c-cda9-4894-b29c-c9b15710859b", "conditions": [{"field": "created_at", "operator": "<", "value": "2020-03-25"}, {"field": "rain", "operator": "<=", "value": "0.48"}]}}
+2025-07-01 10:53:46,756 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.756601", "type": "subscription_added", "data": {"broker_id": "broker_1", "subscription_id": "770a5e6c-cda9-4894-b29c-c9b15710859b"}}
+2025-07-01 10:53:46,756 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.756775", "type": "subscription_distributed", "data": {"broker_id": "broker_1", "subscription_id": "770a5e6c-cda9-4894-b29c-c9b15710859b"}}
+Created subscription data: [('created_at', '<', '2020-03-25'), ('rain', '<=', 0.48)]
+Generating single window subscription...
+Generated window subscription with 3 conditions [('created_at', '<', '2021-03-28'), ('rain', '=', 0.97), ('min_wind', '>', 56.67)]
+2025-07-01 10:53:46,757 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.757272", "type": "window_subscription_created", "data": {"subscriber_id": "subscriber_2", "subscription_id": "218822ee-08ee-458d-a3b7-5b7733524dd8", "conditions": [{"field": "created_at", "operator": "<", "value": "2021-03-28"}, {"field": "rain", "operator": "=", "value": "0.97"}, {"field": "min_wind", "operator": ">", "value": "56.67"}]}}
+2025-07-01 10:53:46,769 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.769401", "type": "subscription_added", "data": {"broker_id": "broker_2", "subscription_id": "218822ee-08ee-458d-a3b7-5b7733524dd8"}}
+2025-07-01 10:53:46,769 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:46.769871", "type": "subscription_distributed", "data": {"broker_id": "broker_2", "subscription_id": "218822ee-08ee-458d-a3b7-5b7733524dd8"}}
+
+Created window subscription for subscriber_2:
+Initial run for 20 seconds...
+Generating single subscription...
+Generating single subscription...
+Generating single subscription...
+2025-07-01 10:53:47,741 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:47.741110", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_1", "subscription_id": "a4f02ba0-2091-46db-bb3e-d52033bdb2a8", "conditions": [{"field": "created_at", "operator": "!=", "value": "2021-11-25"}, {"field": "wind", "operator": ">=", "value": "61.13"}, {"field": "rain", "operator": "<=", "value": "0.69"}]}}
+subscriber_1 added new simple subscription
+2025-07-01 10:53:47,741 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:47.741529", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_2", "subscription_id": "600129d8-83a5-4241-af70-168e601d8c07", "conditions": [{"field": "created_at", "operator": ">", "value": "2024-09-08"}, {"field": "wind", "operator": ">", "value": "13.46"}, {"field": "rain", "operator": "<=", "value": "0.32"}]}}
+subscriber_2 added new simple subscription
+Generating single window subscription...
+Generated window subscription with 4 conditions [('created_at', '>=', '2024-10-24'), ('rain', '<', 0.86), ('min_station_id', '=', 89), ('avg_temperature', '=', 7.9)]
+2025-07-01 10:53:47,741 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:47.741687", "type": "simple_subscription_created", "data": {"subscriber_id": "subscriber_0", "subscription_id": "82f1c5f4-0d0c-445b-aded-3be8db7ee583", "conditions": [{"field": "created_at", "operator": ">", "value": "2025-04-19"}, {"field": "rain", "operator": ">", "value": "0.45"}]}}
+subscriber_0 added new simple subscription
+Generating single window subscription...
+Generated window subscription with 4 conditions [('created_at', '<=', '2022-11-27'), ('rain', '>', 0.03), ('max_temperature', '!=', 4.76), ('max_wind', '>', 7.66)]
+2025-07-01 10:53:47,742 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:47.742371", "type": "window_subscription_created", "data": {"subscriber_id": "subscriber_0", "subscription_id": "63b103b5-8b6b-4bac-85ed-800c68ac002b", "conditions": [{"field": "created_at", "operator": "<=", "value": "2022-11-27"}, {"field": "rain", "operator": ">", "value": "0.03"}, {"field": "max_temperature", "operator": "!=", "value": "4.76"}, {"field": "max_wind", "operator": ">", "value": "7.66"}]}}
+subscriber_0 added new window subscription
+2025-07-01 10:53:47,742 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:53:47.742506", "type": "window_subscription_created", "data": {"subscriber_id": "subscriber_2", "subscription_id": "ce885f67-a26f-4727-90a3-e79e185dea38", "conditions": [{"field": "created_at", "operator": ">=", "value": "2024-10-24"}, {"field": "rain", "operator": "<", "value": "0.86"}, {"field": "min_station_id", "operator": "=", "value": "89"}, {"field": "avg_temperature", "operator": "=", "value": "7.9"}]}}
+subscriber_2 added new window subscription
+
+--- SIMULATING CRASH for broker_1 ---
+2025-07-01 10:54:06,774 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:06.774827", "type": "manual_crash_simulation_sent", "data": {"broker_id": "broker_1"}}
+--- Crash signal sent to broker_1 ---
+2025-07-01 10:54:06,775 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:06.775106", "type": "broker_process_loop_crash", "data": {"broker_id": "broker_1", "error": "Simulating a broker crash via poison pill"}}
+
+Running for another 20 seconds to allow for recovery...
+2025-07-01 10:54:11,751 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:11.751852", "type": "broker_failed", "data": {"broker_id": "broker_1"}}
+Broker broker_1 failed. Restarting...
+2025-07-01 10:54:11,752 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:11.752105", "type": "broker_starting", "data": {"broker_id": "broker_1"}}
+2025-07-01 10:54:11,752 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:11.752255", "type": "broker_recovering_state", "data": {"broker_id": "broker_1"}}
+Broker broker_1 starting recovery...
+2025-07-01 10:54:11,754 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:11.754041", "type": "recovered_subscription", "data": {"broker_id": "broker_1", "subscription_id": "e8f28e50-572b-4b96-b750-0794d65654b0"}}
+2025-07-01 10:54:11,754 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:11.754241", "type": "recovered_subscription", "data": {"broker_id": "broker_1", "subscription_id": "770a5e6c-cda9-4894-b29c-c9b15710859b"}}
+2025-07-01 10:54:11,754 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:11.754363", "type": "recovered_subscription", "data": {"broker_id": "broker_1", "subscription_id": "232fb2de-c715-44d7-876b-36641b948698"}}
+Broker broker_1 recovery complete. Found 3 subscriptions and 0 unprocessed publications.
+Recovered subscriptions for broker_1:
+  - ID: e8f28e50-572b-4b96-b750-0794d65654b0, Info: {'id': 'e8f28e50-572b-4b96-b750-0794d65654b0', 'conditions': [['created_at', '!=', '2025-08-31']], 'window_size': None, 'subscriber_id': None}
+  - ID: 770a5e6c-cda9-4894-b29c-c9b15710859b, Info: {'id': '770a5e6c-cda9-4894-b29c-c9b15710859b', 'conditions': [['created_at', '<', '2020-03-25'], ['rain', '<=', 0.48]], 'window_size': None, 'subscriber_id': None}
+  - ID: 232fb2de-c715-44d7-876b-36641b948698, Info: {'id': '232fb2de-c715-44d7-876b-36641b948698', 'conditions': [['rain', '!=', 0.21]], 'window_size': None, 'subscriber_id': None}
+2025-07-01 10:54:11,755 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:11.754966", "type": "broker_started", "data": {"broker_id": "broker_1"}}
+Simulation finished.
+subscriber_0 thread exiting
+subscriber_0 stopped
+subscriber_1 thread exiting
+subscriber_1 stopped
+subscriber_2 thread exiting
+subscriber_2 stopped
+2025-07-01 10:54:28,874 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:28.874804", "type": "broker_network_stopping", "data": {"num_brokers": 3}}
+2025-07-01 10:54:31,886 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:31.886088", "type": "broker_stopped", "data": {"broker_id": "broker_0"}}
+2025-07-01 10:54:32,819 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:32.819088", "type": "broker_stopped", "data": {"broker_id": "broker_1"}}
+2025-07-01 10:54:32,888 - pubsub_system - INFO - {"timestamp": "2025-07-01T10:54:32.888718", "type": "broker_stopped", "data": {"broker_id": "broker_2"}}
+BrokerNetwork stopped.
+Publisher stopped.
+System stopped.
